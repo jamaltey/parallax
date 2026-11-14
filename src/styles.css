@@ -1,0 +1,200 @@
+@import 'tailwindcss';
+
+/* Preserve the design’s inclusive responsive breakpoints. */
+@custom-variant wide (@media (min-width: 1600px));
+@custom-variant laptop (@media (max-width: 1100px));
+@custom-variant tablet (@media (max-width: 800px));
+@custom-variant mobile (@media (max-width: 480px));
+
+@layer base {
+  :root {
+    font-family:
+      Inter,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      sans-serif;
+    color: #ececef;
+    background: #0e0e11;
+    font-synthesis: none;
+    color-scheme: dark;
+    --accent: #a78bfa;
+    --muted: #9a9aa3;
+    --line: rgba(255, 255, 255, 0.1);
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 96px;
+  }
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  a,
+  input,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+  button {
+    font: inherit;
+  }
+  button,
+  a,
+  input,
+  select {
+    touch-action: manipulation;
+  }
+  button {
+    border: 1px solid #393940;
+    border-radius: 8px;
+    background: #1c1c22;
+    padding: 9px 13px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s,
+      color 0.2s;
+  }
+  button:hover {
+    background: #28262f;
+    border-color: #615772;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  button[aria-pressed='true'] {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: #a78bfa12;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+  ::selection {
+    background: #a78bfa44;
+    color: #fff;
+  }
+  label {
+    display: block;
+    font-size: 0.7rem;
+    color: #b0aab9;
+  }
+  input:not([type='range']),
+  select {
+    display: block;
+    width: 100%;
+    background: #0b0b0e;
+    border: 1px solid #36323e;
+    border-radius: 7px;
+    color: #ececef;
+    padding: 10px 8px;
+    margin-top: 7px;
+    font-size: 0.8rem;
+  }
+  input[type='range'] {
+    width: 100%;
+    accent-color: var(--accent);
+  }
+  [data-tour] {
+    scroll-margin-top: 0;
+  }
+}
+
+/* Aladin’s own stylesheet is unlayered; retain its existing control defaults. */
+:where(.sky) button,
+:where(.sky) a,
+:where(.sky) input,
+:where(.sky) select {
+  -webkit-tap-highlight-color: transparent;
+}
+:where(.sky) a {
+  text-decoration: none;
+  color: inherit;
+}
+:where(.sky) button {
+  font: inherit;
+}
+:where(.sky) button,
+:where(.sky) a,
+:where(.sky) input,
+:where(.sky) select {
+  touch-action: manipulation;
+}
+:where(.sky) button {
+  border: 1px solid #393940;
+  border-radius: 8px;
+  background: #1c1c22;
+  padding: 9px 13px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+:where(.sky) button:hover {
+  background: #28262f;
+  border-color: #615772;
+}
+:where(.sky) button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+:where(.sky) button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: #a78bfa12;
+}
+:where(.sky) label {
+  display: block;
+  font-size: 0.7rem;
+  color: #b0aab9;
+}
+:where(.sky) input:not([type='range']),
+:where(.sky) select {
+  display: block;
+  width: 100%;
+  background: #0b0b0e;
+  border: 1px solid #36323e;
+  border-radius: 7px;
+  color: #ececef;
+  padding: 10px 8px;
+  margin-top: 7px;
+  font-size: 0.8rem;
+}
+:where(.sky) input[type='range'] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+@keyframes orbit-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .starfield {
+    opacity: 0.45;
+  }
+}

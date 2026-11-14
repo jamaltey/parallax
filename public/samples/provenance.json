@@ -1,0 +1,14 @@
+[
+  {
+    "file": "horsehead.fits",
+    "source": "https://raw.githubusercontent.com/astropy/astropy-data/gh-pages/tutorials/FITS-images/HorseHead.fits",
+    "bytes": 1650240,
+    "sha256": "c4bcc0bccbadf1488e4e361c0d8f04255dc344ff401fd4827139b3354eafe863"
+  },
+  {
+    "file": "galactic-center-2mass-j.fits",
+    "source": "https://raw.githubusercontent.com/astropy/astropy-data/gh-pages/galactic_center/gc_2mass_j.fits",
+    "bytes": 1045440,
+    "sha256": "ff0c98cdfa450caad4f1a6819c18652414b47bd8ebd77de0d45846059830a5b6"
+  }
+]
