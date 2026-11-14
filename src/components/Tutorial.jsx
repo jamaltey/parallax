@@ -9,7 +9,7 @@ const STEPS = [
   {
     target: 'samples',
     title: 'Choose your image',
-    text: 'The real SPHEREx DR1 mosaic opens by default. Select a wavelength to change its image layer, or search IRSA for exposures at your applied coordinates. Image source also offers local Horsehead and 2MASS samples and the DSS2 reference sky.',
+    text: 'The real SPHEREx DR1 mosaic opens by default. Select a wavelength to change its image layer, or search IRSA for exposures at your applied coordinates. Change sky map also offers local Horsehead and 2MASS samples and the DSS2 reference sky.',
   },
   {
     target: 'atlas',
@@ -17,14 +17,9 @@ const STEPS = [
     text: 'Drag the sky to look around and scroll over the atlas to zoom. Its own coordinate and layer controls stay available. Each local image has a limited footprint.',
   },
   {
-    target: 'bands',
-    title: 'Explore the demo bands',
-    text: 'These three demo band groups filter synthetic timeline metadata only. The real SPHEREx wavelength selector sits above the atlas and changes the mosaic layer. Refresh here reloads the demo metadata query.',
-  },
-  {
     target: 'timeline',
-    title: 'Move through observation dates',
-    text: 'An epoch means an observation date. Use the arrows, slider, or Play metadata button to explore the synthetic timeline. Playback changes metadata only; it does not change the FITS image.',
+    title: 'Compare real observations',
+    text: 'Open an image from the archive results to start your timeline. Return to the sky map to add more images, then use the arrows or Play to switch between them. Each date belongs to a real SPHEREx observation. Different wavelengths can also change how an object looks.',
   },
   {
     target: 'compare',

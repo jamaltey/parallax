@@ -139,14 +139,14 @@ export default function Landing({ onTour }) {
             <div>
               <h3>Follow time.</h3>
               <p>
-                An epoch is an observation date. Step through the demo timeline to explore how a
-                sequence of observations is organized.
+                An epoch is an observation date. Open real SPHEREx images to build a sequence and
+                explore the sky at their observation dates.
               </p>
             </div>
             <ul>
               <li>Step, scrub, or play the timeline</li>
               <li>Adjust playback speed</li>
-              <li>Demo metadata, clearly labeled</li>
+              <li>Original SPHEREx observation dates</li>
             </ul>
           </article>
           <article className="method-row laptop:grid-cols-[40px_1fr_0.8fr] laptop:gap-5.5 tablet:grid-cols-[35px_1fr] tablet:gap-4.5 mobile:px-0 mobile:py-7.5 mobile:[&_h3]:text-[1.8rem] tablet:[&_p]:max-w-none mobile:[&_p]:text-[0.8rem] laptop:[&_ul]:pl-3.75 tablet:[&_ul]:col-2 tablet:[&_ul]:p-0 grid grid-cols-[60px_1fr_0.75fr] gap-9 px-0 py-10 [border-top:1px_solid_var(--line)] [&_h3]:font-[Georgia,serif] [&_h3]:text-[2rem] [&_h3]:font-normal [&_h3]:tracking-[-0.02em] [&_li]:px-0 [&_li]:py-3.75 [&_li]:[border-bottom:1px_solid_var(--line)] [&_li:before]:mr-3.5 [&_li:before]:text-[0.75rem] [&_li:before]:text-[#8a739f] [&_li:before]:[content:'↗'] [&_p]:mt-3.5 [&_p]:max-w-120 [&_p]:text-[0.85rem] [&_p]:leading-[1.9] [&_p]:text-[#9a9aa3] [&_ul]:m-0 [&_ul]:list-none [&_ul]:p-[0_0_0_40px] [&_ul]:text-[0.75rem] [&_ul]:text-[#a9a7b2]">

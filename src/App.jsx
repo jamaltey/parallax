@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import { BANDS } from './api/observations';
+import { useState } from 'react';
 import ComparisonPanel from './components/ComparisonPanel';
 import PositionForm from './components/PositionForm';
-import SkyViewer from './components/SkyViewer';
-import Timeline from './components/Timeline';
-import { useObservations } from './hooks/useObservations';
+import ObservationWorkspace from './citizen/ObservationWorkspace';
 import Starfield from './components/Starfield';
 import Landing, { Mission } from './components/Landing';
 import Tutorial from './components/Tutorial';
@@ -12,28 +9,6 @@ import Tutorial from './components/Tutorial';
 export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const [position, setPosition] = useState({ ra: 83.633, dec: 22.0145, fov: 2 });
-  const [band, setBand] = useState(BANDS[0].id);
-  const [revision, refresh] = useState(0);
-  const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(800);
-  const query = useMemo(() => ({ ...position, band }), [position, band]);
-  const { rows, loading, error } = useObservations(query, revision);
-
-  useEffect(() => {
-    setIndex(0);
-    setPlaying(false);
-  }, [query, revision]);
-
-  useEffect(() => {
-    if (!playing || rows.length < 2) return;
-    const timer = setInterval(() => setIndex(i => (i + 1) % rows.length), speed);
-    return () => clearInterval(timer);
-  }, [playing, speed, rows]);
-
-  const current = rows[index];
-  const mock = (import.meta.env.VITE_OBSERVATION_MODE || 'mock') === 'mock';
-
   return (
     <>
       <Starfield />
@@ -58,8 +33,12 @@ export default function App() {
           <a href="#explorer">Sky explorer</a>
           <a href="#perspective">Parallax</a>
           <a href="#mission">Mission</a>
+          <a href="/community">Community</a>
         </div>
         <div className="nav-actions mobile:gap-3.75 flex items-center gap-5.5">
+          <a className="tablet:inline hidden text-xs text-violet-200" href="/community">
+            Community
+          </a>
           <button
             className="tour-trigger flex items-center gap-2 px-0 py-1 text-[0.75rem] text-[#b7b7c0] [background:none] [border:0] [&_>_span:first-child]:inline-grid [&_>_span:first-child]:h-5.5 [&_>_span:first-child]:w-5.5 [&_>_span:first-child]:place-items-center [&_>_span:first-child]:rounded-[50%] [&_>_span:first-child]:[border:1px_solid_#57535f] [&:hover]:text-(--accent) [&:hover]:[background:none]"
             aria-label="Open tutorial"
@@ -109,9 +88,8 @@ export default function App() {
           <div className="notice mobile:gap-2.25 mobile:p-3 mobile:text-[0.67rem] mb-6 flex items-baseline gap-3 rounded-[9px] bg-[#17141e] px-4.5 py-3.5 text-[0.73rem] leading-[1.8] text-[#aaa2bb] [border:1px_solid_#a78bfa28] [&_strong]:font-medium [&_strong]:text-[#c6b4e9]">
             <span className="status-dot inline-block h-1.25 w-1.25 shrink-0 rounded-[50%] bg-(--accent)" />
             <p>
-              <strong>{mock ? 'Demo observations' : 'Custom observation adapter'}</strong> · The
-              timeline and demo band groups are synthetic. The SPHEREx DR1 mosaic and IRSA exposure
-              search below use real mission data and operate independently of this demo timeline.
+              <strong>Real SPHEREx observations</strong> · Explore the infrared sky map, then open
+              individual images from NASA’s archive to build your observation timeline.
             </p>
           </div>
           <div className="grid gap-5 lg:grid-cols-[350px_1fr]">
@@ -119,78 +97,14 @@ export default function App() {
               <div data-tour="coordinates">
                 <PositionForm onApply={setPosition} />
               </div>
-              <section
-                className="panel mobile:p-4.5 space-y-4 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)] [&_h2]:mt-2 [&_h2]:font-[inherit] [&_h2]:text-[1.1rem] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em]"
-                data-tour="bands"
-              >
-                <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-                  02 / Spectrum
-                </div>
-                <h2>Select a demo band</h2>
-                <label>
-                  Band group
-                  <select value={band} onChange={e => setBand(e.target.value)}>
-                    {BANDS.map(b => (
-                      <option key={b.id} value={b.id}>
-                        {b.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
-                  Illustrative groups, not the mission’s 102 channel definitions. Filters metadata
-                  only.
-                </p>
-                <button onClick={() => refresh(r => r + 1)} disabled={loading}>
-                  Refresh observations
-                </button>
-              </section>
               <div data-tour="compare">
                 <ComparisonPanel />
               </div>
             </aside>
             <div className="space-y-5">
               <div>
-                <SkyViewer position={position} />
+                <ObservationWorkspace position={position} />
               </div>
-              <div data-tour="timeline">
-                <Timeline
-                  rows={rows}
-                  index={Math.min(index, Math.max(0, rows.length - 1))}
-                  setIndex={setIndex}
-                  playing={playing}
-                  setPlaying={setPlaying}
-                  speed={speed}
-                  setSpeed={setSpeed}
-                />
-              </div>
-              <section
-                className="panel mobile:p-4.5 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)] [&_h2]:mt-2 [&_h2]:font-[inherit] [&_h2]:text-[1.1rem] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em]"
-                aria-label="Data provenance"
-              >
-                {loading ? (
-                  <p role="status">Loading observations…</p>
-                ) : error ? (
-                  <p role="alert" className="error text-[0.85rem] text-[#fda4af]">
-                    {error}
-                  </p>
-                ) : current ? (
-                  <>
-                    <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-                      {current.isMock
-                        ? 'Synthetic observation'
-                        : 'Adapter-supplied metadata · not independently verified'}
-                    </div>
-                    <p className="mt-2 wrap-break-word">{current.provenance}</p>
-                    <p className="muted mt-2 text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
-                      ID: {current.id} · RA {position.ra}° / Dec {position.dec}° · {position.fov}°
-                      FOV
-                    </p>
-                  </>
-                ) : (
-                  <p>No observations found. Try another location or refresh.</p>
-                )}
-              </section>
             </div>
           </div>
         </section>

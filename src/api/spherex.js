@@ -85,6 +85,16 @@ export function parseArchiveTable(text) {
       const timestamp = (mjd - 40587) * 86400000;
       return {
         id: row.obs_publisher_did || url.href,
+        mission: 'SPHEREx',
+        product: 'spectral-exposure',
+        isMock: false,
+        wavelengthMin: Number(row.em_min),
+        wavelengthMax: Number(row.em_max),
+        processingVersion: url.pathname.match(/\/(l2b-[^/]+)\//)?.[1],
+        timeMjdStart: row.t_min,
+        timeMjdEnd: row.t_max,
+        provenance: 'NASA/SPHEREx · Caltech/IPAC IRSA SIA2',
+        archiveMetadata: row,
         obsId: row.obs_id,
         band: row.energy_bandpassname,
         observedAt:

@@ -1,4 +1,14 @@
-export default function Timeline({ rows, index, setIndex, playing, setPlaying, speed, setSpeed }) {
+export default function Timeline({
+  rows,
+  index,
+  setIndex,
+  playing,
+  setPlaying,
+  speed,
+  setSpeed,
+  imageMode = false,
+  busy = false,
+}) {
   const row = rows[index];
   const step = delta => {
     setPlaying(false);
@@ -14,11 +24,14 @@ export default function Timeline({ rows, index, setIndex, playing, setPlaying, s
           <h2>Observation timeline</h2>
         </div>
         <span className="tag inline-block [align-self:start] rounded-[999px] px-2.5 py-1.5 text-[0.68rem] whitespace-nowrap text-[#aba5bb] [border:1px_solid_#39343f]">
-          {rows.length} epochs
+          {rows.length} images
         </span>
       </div>
       <p aria-live="polite">
-        {row ? new Date(row.observedAt).toISOString().slice(0, 10) : 'No observations available'}
+        {row
+          ? new Date(row.observedAt).toISOString().slice(0, imageMode ? 23 : 10) +
+            (imageMode ? ' UTC' : '')
+          : 'No observations available'}
       </p>
       <input
         aria-label="Observation epoch"
@@ -36,8 +49,11 @@ export default function Timeline({ rows, index, setIndex, playing, setPlaying, s
         <button disabled={!rows.length} onClick={() => step(-1)} aria-label="Previous epoch">
           ←
         </button>
-        <button disabled={rows.length < 2} onClick={() => setPlaying(!playing)}>
-          {playing ? 'Pause' : 'Play'} metadata
+        <button
+          disabled={rows.length < 2 || (imageMode && busy && !playing)}
+          onClick={() => setPlaying(!playing)}
+        >
+          {playing ? 'Pause' : 'Play'} {imageMode ? 'images' : 'metadata'}
         </button>
         <button disabled={!rows.length} onClick={() => step(1)} aria-label="Next epoch">
           →
@@ -52,7 +68,9 @@ export default function Timeline({ rows, index, setIndex, playing, setPlaying, s
         </label>
       </div>
       <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
-        Loops through observation metadata only. No epoch image playback is connected.
+        {imageMode
+          ? 'Original exposure images. Playback waits for each image to load; wavelengths can vary across the detector.'
+          : 'Loops through observation metadata only. No epoch image playback is connected.'}
       </p>
     </section>
   );

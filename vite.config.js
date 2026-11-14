@@ -1,6 +1,7 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+import { defineConfig } from 'vite';
+import { exposureRoute } from './server/exposure.js';
 import { spherexRoute } from './server/spherex.js';
 export default defineConfig({
   plugins: [
@@ -10,11 +11,16 @@ export default defineConfig({
       name: 'spherex-archive',
       configureServer(server) {
         server.middlewares.use(spherexRoute);
+        server.middlewares.use(exposureRoute);
       },
       configurePreviewServer(server) {
         server.middlewares.use(spherexRoute);
+        server.middlewares.use(exposureRoute);
       },
     },
   ],
-  base: './',
+  base: '/',
+  server: {
+    host: true,
+  },
 });
