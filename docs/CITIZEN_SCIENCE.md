@@ -11,7 +11,7 @@ The **Spot something interesting?** panel reuses the existing Aladin viewer. Sea
 1. Use a dedicated Supabase project. Apply [citizen science migration](../supabase/migrations/20261114125621_citizen_science.sql) in its SQL Editor (once). The migration creates only Parallax's two tables, validation function, indexes, policies, and summary view. It deliberately fails on conflicting existing objects instead of replacing unrelated tables.
 2. Enable **Anonymous Sign-Ins** in Authentication → Sign In / Providers. An anonymous identity is reused in the browser; clearing site data or switching browser profiles loses it. For public deployment, configure abuse controls for anonymous authentication in Supabase; enabling CAPTCHA also requires a CAPTCHA token flow, which is not included in this hackathon UI.
 3. Set `VITE_SUPABASE_URL` to the project root (not `/rest/v1/`) and `VITE_SUPABASE_PUBLISHABLE_KEY` to its `sb_publishable_…` key. Copy `.env.example` to `.env.local`, then restart Vite or rebuild. Never use a secret or service-role key. Keep project-specific configuration in ignored `.env.local`; do not commit it.
-4. For local Node mode, keep `VITE_SPHEREX_API_MODE=node` and run `npm run dev`, or build then use `npm start`. For Vercel, set `VITE_SPHEREX_API_MODE=supabase`; the static frontend calls the deployed Edge Functions directly. These transport choices do not change Auth, database calls, saved IRSA URLs, or RLS.
+4. Run `npm run dev`, or build then use `npm start`. The explorer always calls the same-origin Node routes; Supabase configuration affects only Auth and citizen-science database calls. Saved candidates retain original IRSA URLs rather than deployment-specific proxy URLs.
 
 The migration grants public reads for the community's candidates and classifications; authenticated anonymous contributors may insert under their own UID. Clients have no UPDATE/DELETE grants, cannot set status or creation time, cannot review their own candidates, and cannot overwrite an earlier assessment. The `candidate_summary` view uses `security_invoker` and excludes unsure votes from agreement. With no definitive reviews it returns NULL, displayed as **Awaiting review**. Client-side hiding reduces incidental bias but is not a private/blinded research protocol: the community records are public.
 
@@ -21,7 +21,7 @@ See [Data sources and scientific limits](DATA_SOURCES.md#image-identity-and-scie
 
 ### Tests
 
-`npm test` includes captured IRSA metadata parsing, FITS/TAN-SIP footprint and Edge byte-identity tests, transport selection, candidate validation, agreement math, and a PGlite PostgreSQL execution of the migration with two test identities. Database tests cover invalid provenance, ownership spoofing, self-review, duplicate votes, public reads, immutable status, and anonymous write denial. Tests run locally and do not write synthetic candidates to Supabase. There is no lint script.
+`npm test` includes captured IRSA metadata parsing, FITS/TAN-SIP footprint tests, Node Range and byte-identity tests, candidate validation, agreement math, and a PGlite PostgreSQL execution of the migration with two test identities. Database tests cover invalid provenance, ownership spoofing, self-review, duplicate votes, public reads, immutable status, and anonymous write denial. Tests run locally and do not write synthetic candidates to Supabase. There is no lint script.
 
 Main additions: `src/citizen/` (workspace, report form, community routes, model/API); `src/lib/supabase.js`; `src/lib/fits.js`; `server/exposure.js`; `supabase/migrations/`; and citizen-science tests. Existing `SkyViewer`, `Timeline`, archive search, navigation, and server routing are extended rather than replaced.
 
@@ -39,7 +39,7 @@ The investigation page hides reporter type, description, confidence, markers, an
 
 ## Verification
 
-Automated tests execute the migration in local PGlite with separate identities; they are not a live hosted Supabase end-to-end test. Original-image rendering and marking have been checked in a browser. The backend migration does not change the schema or RLS. A completed two-user hosted submission/review run through deployed Edge Functions and Vercel has not been established.
+Automated tests execute the migration in local PGlite with separate identities; they are not a live hosted Supabase end-to-end test. Original-image rendering and marking were checked earlier in a browser. This cleanup does not change the schema or RLS. A complete two-user submission/review run against a deployed Render build must still be established before public presentation.
 
 Before presenting a configured deployment:
 

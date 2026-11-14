@@ -8,12 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
-    "verify:edge-fits": "node scripts/verify-edge-fits.mjs",
     "format": "prettier --write . --config .prettierrc",
     "start": "node server/index.js"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.12.0 <25"
   },
   "dependencies": {
     "@supabase/supabase-js": "2.119.0",

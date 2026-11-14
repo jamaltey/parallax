@@ -1,7 +1,0 @@
-project_id = "parallax"
-
-[functions.spherex-exposures]
-verify_jwt = false
-
-[functions.spherex-image]
-verify_jwt = false

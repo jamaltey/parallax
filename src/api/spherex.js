@@ -1,11 +1,10 @@
-import { archiveSearchUrl } from '../../supabase/functions/_shared/archive.js';
-import { spherexTransport } from './spherexTransport.js';
-export { archiveSearchUrl, SPHEREX_COLLECTIONS } from '../../supabase/functions/_shared/archive.js';
+import { validatePosition } from '../lib/coordinates.js';
 
 export const SPHEREX_HIPS = 'https://irsa.ipac.caltech.edu/data/hips/SPHEREx/spherex_allsky_cube';
 export const SPHEREX_TUTORIAL = 'https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/';
 export const SPHEREX_CUBE_TUTORIAL =
   'https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/';
+export const SPHEREX_COLLECTIONS = ['spherex_dr1', 'spherex_qr3'];
 
 export function parseCubeProperties(text) {
   const properties = Object.fromEntries(
@@ -48,6 +47,19 @@ export async function getSpherexCube({ signal } = {}) {
   const response = await fetch(`${SPHEREX_HIPS}/properties`, { signal });
   if (!response.ok) throw new Error(`IRSA cube metadata request failed (${response.status}).`);
   return parseCubeProperties(await response.text());
+}
+
+export function archiveSearchUrl(position, collection = 'spherex_dr1') {
+  validatePosition(position);
+  if (!SPHEREX_COLLECTIONS.includes(collection)) throw new Error('Unsupported SPHEREx collection.');
+  const url = new URL('https://irsa.ipac.caltech.edu/SIA');
+  url.search = new URLSearchParams({
+    COLLECTION: collection,
+    POS: `CIRCLE ${position.ra} ${position.dec} ${1 / 3600}`,
+    RESPONSEFORMAT: 'TSV',
+    MAXREC: '50',
+  }).toString();
+  return url.href;
 }
 
 export function parseArchiveTable(text) {
@@ -105,10 +117,10 @@ export async function searchSpherex(position, collection, { signal } = {}) {
     fov: position.fov,
     collection,
   });
-  const response = await spherexTransport.request('spherex-exposures', params, { signal });
+  const response = await fetch(`/api/spherex-exposures?${params}`, { signal });
   if (!response.ok)
     throw new Error(
-      `IRSA search failed (${response.status}). Retry; archive access requires a configured Parallax API backend.`
+      `IRSA search failed (${response.status}). Retry; archive search requires the Parallax server.`
     );
   return parseArchiveTable(await response.text());
 }

@@ -1,33 +1,36 @@
 # Parallax
 
-**A different perspective on a changing universe.**
+> **A different perspective on a changing universe.**
 
-Parallax is an interactive astronomical exploration and citizen science platform developed by **team Delta Cephei** for the **NASA International Space Apps Challenge 2026 — “Planet X and SPHEREx.”** Explore real infrared observations, mark changes, and investigate candidates together.
+Parallax is an interactive astronomical exploration and citizen-science platform built by **team Delta Cephei** for the **NASA International Space Apps Challenge 2026 — “Planet X and SPHEREx.”** It makes real infrared observations approachable: explore the sky, compare original observations, mark an interesting change, and invite the community to investigate it.
 
-[Official challenge](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [Deployment and architecture](docs/ARCHITECTURE.md)
+**Live demo:** _add Render URL after deployment_ · [Official challenge](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [Technical architecture](docs/ARCHITECTURE.md)
 
-## Why Parallax?
+<!-- Screenshot placeholder: replace with a current Parallax explorer/community image before judging. -->
 
-Spotting small changes among countless points of light is difficult, and astronomical archives can be intimidating.
+## The problem and our solution
 
-Parallax turns exploration into a guided workflow: **Explore → Mark Object → Submit Candidate → Community Review.** Each report preserves observation identities and provenance so others can revisit the evidence.
+SPHEREx repeatedly maps the sky across 102 near-infrared channels. The archive is scientifically rich, but its scale and specialist formats make public investigation difficult. Parallax turns those resources into a guided workflow:
 
-## What works today
+**Explore → Mark Object → Submit Candidate → Community Review**
 
-| Feature                      | Implemented experience                                                                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Real SPHEREx integration** | Live IRSA all-sky mosaic and DR1/QR3 original-exposure search; no synthetic fallback.                                                      |
-| **Infrared exploration**     | Explore SPHEREx's 102-channel infrared mosaic, with 100 selectable wavelength layers; navigate by sky coordinates and zoom.                |
-| **Original FITS timeline**   | Open exposures, step through dates, and play a selected sequence. Display distortion correction makes the original images viewable.        |
-| **Object marking**           | Record celestial coordinates, reposition/remove markers, and retain them when switching frames.                                            |
-| **Citizen science**          | Submit a type, description, and confidence through Supabase anonymous authentication; preserve original metadata and image checksums.      |
-| **Community investigation**  | Filter candidates, reopen saved observations, and submit agree/disagree/unsure assessments. Self-review and duplicate reviews are blocked. |
+Every real candidate retains the original IRSA observation IDs, timestamps, detector bands, source URLs, coordinates, view state, and extracted-image checksum so another person can revisit the same evidence.
 
-Persistence requires Supabase. Motion reports require two observation times. Community agreement excludes unsure votes and **is not scientific confirmation**.
+## Implemented today
 
-## Try it locally
+| Area                  | Working functionality                                                                                                              |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Real SPHEREx data     | Live Caltech/IPAC IRSA all-sky mosaic plus DR1 and QR3 original-exposure searches; no synthetic fallback                           |
+| Infrared exploration  | 102-channel mosaic metadata, 100 selectable non-blank wavelength layers, RA/Dec navigation, and FOV control                        |
+| Original observations | Strictly validated Level 2 FITS retrieval, timeline playback, browser Web Worker display reprojection, and provenance checks       |
+| Citizen science       | Per-frame celestial markers, candidate reports, anonymous Supabase authentication, saved investigations, and community reviews     |
+| Scientific safeguards | Original source identity and checksum validation, self-review/duplicate-review prevention, RLS, and explicit candidate disclaimers |
 
-Requires **Node.js 22.12+**, npm, internet access, and a WebGL2-capable browser.
+Community agreement is a public assessment, **not scientific confirmation or the probability that an object is Planet X**.
+
+## Run locally
+
+Requires Node.js 22.12–24, npm, internet access, WebGL2, and a modern browser.
 
 ```sh
 npm ci
@@ -35,48 +38,47 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open Vite’s local URL. Choose **Open image → Mark Object**; add images to build a timeline. Exploration needs no API key.
+The Vite development server uses the same-origin Node API routes. For a production-equivalent run:
 
-Local development defaults to the preserved Node API. Production can use either that server or the new Supabase Edge Functions transport.
-
-### Enable contributions
-
-1. Apply the [Supabase migration](supabase/migrations/20261114125621_citizen_science.sql) once in your project's SQL Editor.
-2. Enable **Anonymous Sign-Ins** in Supabase Authentication.
-3. Set these values in `.env.local`, then restart Vite or rebuild:
-
-```dotenv
-VITE_SPHEREX_API_MODE=node
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_KEY
+```sh
+npm run build
+HOST=0.0.0.0 PORT=3000 npm start
 ```
 
-Use the project root URL and a publishable key—never a secret or service-role key. [Full setup and review policies →](docs/CITIZEN_SCIENCE.md)
+Exploration does not require a Supabase session. To enable submissions and reviews, apply the included migration, enable Anonymous Sign-Ins, and configure:
 
-## Technology & data
+```dotenv
+VITE_SUPABASE_URL=https://PROJECT_REF.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+```
 
-**React 19 · Vite 7 · Tailwind CSS 4 · Aladin Lite 3.8.2 · Web Workers · Supabase Edge Functions/Auth/PostgreSQL · Node.js fallback · Vercel-ready static frontend**
+Never put a secret or service-role key in `VITE_*` variables. See [Citizen science setup](docs/CITIZEN_SCIENCE.md).
 
-Mission imagery comes from **NASA/SPHEREx via Caltech/IPAC IRSA**: the [infrared mosaic](https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/) and [original spectral observations](https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/). Separate DSS/2MASS reference images are labeled and excluded from SPHEREx candidate submissions.
+## Production architecture
 
-## Scientific scope & next steps
+Parallax is supported as one **Render Node.js Web Service**:
 
-Colors represent infrared brightness, not visible-light colors. The mosaic combines observation times; individual exposures can differ in wavelength and display stretch. Reports are **candidates needing further investigation**, not discoveries of Planet X.
+- React 19, Vite 7, Tailwind CSS 4, and Aladin Lite 3.8.2 in the browser.
+- Node.js serves `dist`, SPA routes, IRSA archive searches, and bounded FITS extraction.
+- Supabase provides only anonymous Auth and PostgreSQL persistence/RLS for citizen science.
+- Browser Web Workers prepare display-only TAN/SIP reprojections without changing stored scientific pixels.
 
-**Overlay and difference imaging are UI placeholders.** Calibrated photometry, spectral extraction, automated discovery, and scientific verification are not implemented.
+The repository includes [render.yaml](render.yaml). Use `npm ci && npm run build` as the build command and `npm start` as the start command. Add the two Supabase variables above in Render. No production deployment URL is claimed yet.
 
-Future work: validated image registration/subtraction, quality-mask and PSF handling, richer archive filtering, and stronger moderation and contributor identity controls.
+## Data and scientific limits
 
-## Team & documentation
+Mission data comes from **NASA/SPHEREx via Caltech/IPAC IRSA**: the [all-sky wavelength cube](https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/) and [original spectral images](https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/). Included DSS/2MASS tutorial images are clearly labeled and cannot be submitted as SPHEREx candidates.
 
-**Delta Cephei** · _Member names and roles to be added._ Independent project; no NASA endorsement implied.
+The mosaic combines observation times, colors represent infrared brightness rather than visible color, and individual exposures may differ in wavelength and display stretch. **Difference imaging and overlay are UI placeholders.** Calibrated photometry, spectral extraction, automated classification, motion fitting, and Planet X discovery or verification are not implemented.
 
-- [Architecture](docs/ARCHITECTURE.md): components, deployment, tests, and legacy adapters.
-- [Data sources](docs/DATA_SOURCES.md): provenance, FITS rendering, and scientific limits.
-- [Citizen science](docs/CITIZEN_SCIENCE.md): workflow, database policies, and verification checklist.
+## Documentation
 
-`npm test` covers data contracts, display conversion, and local database policies. A two-user hosted Supabase workflow still needs end-to-end verification; see the checklist before presenting a deployment.
+- [Architecture](docs/ARCHITECTURE.md) — runtime design, Node endpoints, Render deployment, tests, and the serverless benchmark decision.
+- [Data sources](docs/DATA_SOURCES.md) — archive contracts, provenance, FITS processing, rendering, and scientific limitations.
+- [Citizen science](docs/CITIZEN_SCIENCE.md) — Auth/database setup, report/review contract, RLS, and verification checklist.
 
-## Deployment status
+## Team and roadmap
 
-Both public Supabase Edge Functions are deployed. Hosted FITS extraction passed the representative 16 MiB checksum test, and controlled DR1/QR3 archive searches passed through both backends. However, three concurrent FITS requests exceeded the Edge worker's memory limit, while the Node cache served the same warmed requests successfully. **Keep Node mode for production for now.** Vercel and the complete two-user workflow have not been deployed or verified. [Deployment details and benchmark →](docs/ARCHITECTURE.md#production-decision)
+**Delta Cephei** · _Member names and roles to be added._ Parallax is an independent project; no NASA endorsement is implied.
+
+Next steps include scientifically validated registration/subtraction, quality-mask and PSF handling, richer archive filtering, moderation, stronger contributor identity controls, and hosted end-to-end verification.
