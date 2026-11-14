@@ -1,7 +1,8 @@
-// Minimal FITS IMAGE reader: preserves original pixels and celestial WCS cards.
+// Runtime-independent FITS IMAGE reader shared by the browser and Node.js server.
 // No reprojection, subtraction, resampling, or flux calibration is performed.
 const decoder = new TextDecoder('ascii');
 const block = n => Math.ceil(n / 2880) * 2880;
+
 export function readHdus(buffer, stopAtImage = false) {
   const bytes = new Uint8Array(buffer);
   const hdus = [];
@@ -46,6 +47,7 @@ export function readHdus(buffer, stopAtImage = false) {
   }
   return hdus;
 }
+
 export function extractScienceImage(buffer) {
   const hdu = readHdus(buffer, true).find(h => h.header.EXTNAME === 'IMAGE');
   if (!hdu || hdu.header.NAXIS !== 2 || hdu.header.BITPIX !== -32)

@@ -143,10 +143,10 @@ function SkyViewerInstance({
       }, 65000);
       (async () => {
         validateExposure(exposure);
-        const response = await fetch(
-          `/api/spherex-image?${new URLSearchParams({ url: exposure.url })}`,
-          { signal: controller.signal }
-        );
+        const params = new URLSearchParams({ url: exposure.url });
+        const response = await fetch(`/api/spherex-image?${params}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           let message = 'Original exposure unavailable. Retry.';
           try {
