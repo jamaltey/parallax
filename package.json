@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "verify:edge-fits": "node scripts/verify-edge-fits.mjs",
     "format": "prettier --write . --config .prettierrc",
     "start": "node server/index.js"
   },

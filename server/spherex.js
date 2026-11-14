@@ -1,4 +1,4 @@
-import { archiveSearchUrl } from '../src/api/spherex.js';
+import { archiveSearchUrl } from '../supabase/functions/_shared/archive.js';
 
 // Fixed upstream and validated parameters: this is not an arbitrary URL proxy.
 export async function spherexRoute(req, res, next = () => {}) {

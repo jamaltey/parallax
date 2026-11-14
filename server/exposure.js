@@ -1,19 +1,7 @@
 import { extractScienceImage } from '../src/lib/fits.js';
+import { exposureUrl } from '../supabase/functions/_shared/archive.js';
+export { exposureUrl } from '../supabase/functions/_shared/archive.js';
 const cache = new Map();
-export function exposureUrl(value) {
-  const url = new URL(value);
-  if (
-    url.origin !== 'https://irsa.ipac.caltech.edu' ||
-    url.username ||
-    url.password ||
-    url.search ||
-    url.hash ||
-    !/^\/ibe\/data\/spherex\/(dr1|qr3)\/level2\/[A-Za-z0-9_/-]+\.fits$/.test(url.pathname) ||
-    value.includes('..')
-  )
-    throw new Error('Only original SPHEREx exposure files are accepted.');
-  return url.href;
-}
 export async function exposureRoute(req, res, next = () => {}) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== '/api/spherex-image') return next();

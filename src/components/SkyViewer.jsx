@@ -10,6 +10,7 @@ import {
 import SpherexArchive from './SpherexArchive';
 import { scienceImage } from '../lib/fits';
 import { validateExposure, IMAGE_VERSION } from '../citizen/model';
+import { spherexTransport } from '../api/spherexTransport';
 export default function SkyViewer({
   position,
   exposure = null,
@@ -143,8 +144,9 @@ function SkyViewerInstance({
       }, 65000);
       (async () => {
         validateExposure(exposure);
-        const response = await fetch(
-          `/api/spherex-image?${new URLSearchParams({ url: exposure.url })}`,
+        const response = await spherexTransport.request(
+          'spherex-image',
+          { url: exposure.url },
           { signal: controller.signal }
         );
         if (!response.ok) {
