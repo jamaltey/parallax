@@ -5,6 +5,7 @@ import PositionForm from './components/PositionForm';
 import Starfield from './components/Starfield';
 import Tutorial from './components/Tutorial';
 import SoundToggle from './components/SoundToggle';
+import Footer from './components/Footer';
 import { explorerUrl, parseExplorerUrl } from './lib/explorerUrl';
 
 export default function App() {
@@ -186,36 +187,7 @@ export default function App() {
         {!embed && <Mission />}
       </main>
 
-      {!embed && (
-        <footer className="site-footer laptop:mx-10 laptop:my-0 tablet:mx-6 tablet:my-0 tablet:flex-wrap tablet:[align-items:start] mobile:mx-4.5 mobile:my-0 mobile:flex-col mobile:gap-5 mobile:px-0 mobile:py-8.75 tablet:[&_>_.text-link]:mt-2.5 relative z-1 mx-auto my-0 flex max-w-340 items-center justify-between gap-7.5 px-0 pt-10.5 pb-12 [border-top:1px_solid_var(--line)] [&_>_.text-link]:m-0 [&_>_.text-link]:whitespace-nowrap [&_p]:mt-3 [&_p]:text-[0.65rem] [&_p]:leading-[1.9] [&_p]:text-[#827c8c]">
-          <div>
-            <a
-              href="#top"
-              className="site-brand mobile:gap-1.75 mobile:text-[0.73rem] inline-flex items-center gap-3 text-[0.85rem] font-semibold tracking-[0.17em] whitespace-nowrap [&_>_span]:text-[24px] [&_>_span]:leading-none [&_>_span]:text-(--accent)"
-            >
-              <span aria-hidden="true">✧</span> PARALLAX
-            </a>
-            <p>A new perspective on the night sky.</p>
-          </div>
-          <p>
-            Independent NASA Space Apps concept. Created by team Delta Cephei
-            <br />
-            Imagery: NASA/SPHEREx · Caltech/IPAC · Astropy / DSS / 2MASS · Viewer: CDS Aladin Lite.
-          </p>
-          <a
-            href="/developers"
-            className="text-link inline-flex items-center gap-2 text-[0.75rem] text-[#c1b1e5]"
-          >
-            Public API ↗
-          </a>
-          <a
-            href="#top"
-            className="text-link mt-7 inline-flex items-center gap-6 text-[0.75rem] text-[#c1b1e5] [&:hover]:text-(--accent)"
-          >
-            Back to the stars ↑
-          </a>
-        </footer>
-      )}
+      {!embed && <Footer />}
 
       {tourOpen && <Tutorial onClose={() => setTourOpen(false)} />}
     </>

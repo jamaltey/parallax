@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import Starfield from './Starfield';
+import Footer from './Footer';
 
 const BASE_URL = 'https://parallax.dcephei.earth/api/v1';
 const panel = 'rounded-xl border border-white/10 bg-[#141418] p-5 sm:p-7';
@@ -353,10 +354,7 @@ for candidate in response.json()["data"]:
           </p>
         </section>
       </main>
-      <footer className="relative z-1 mx-auto max-w-6xl border-t border-white/10 px-5 py-8 text-xs text-[#9a9aa3] sm:px-10">
-        Parallax · Team Delta Cephei · Independent NASA Space Apps concept. No NASA affiliation or
-        endorsement.
-      </footer>
+      <Footer />
     </>
   );
 }

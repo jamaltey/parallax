@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Starfield from '../components/Starfield';
+import Footer from '../components/Footer';
 import ObservationWorkspace from './ObservationWorkspace';
 import { CHANGE_TYPES } from './model';
 import { citizenSession } from '../lib/supabase';
@@ -58,13 +59,7 @@ export default function Community({ candidateId }) {
         </p>
         {candidateId ? <Investigation key={candidateId} id={candidateId} /> : <CandidateList />}
       </main>
-      <footer className="relative z-1 mx-auto max-w-7xl border-t border-white/10 px-5 py-8 text-xs text-[#9a9aa3]">
-        Parallax · Team Delta Cephei · NASA Space Apps concept. No NASA affiliation or endorsement.
-        ·{' '}
-        <a className="text-violet-300" href="/developers">
-          Public API
-        </a>
-      </footer>
+      <Footer />
     </>
   );
 }
