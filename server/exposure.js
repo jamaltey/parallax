@@ -1,6 +1,9 @@
 import { extractScienceImage } from '../src/lib/fits.js';
 
 const IRSA_ORIGIN = 'https://irsa.ipac.caltech.edu';
+// IRSA's public AWS Open Data mirror holds the same files under the same relative paths.
+const S3_MIRROR = 'https://nasa-irsa-spherex.s3.amazonaws.com/';
+const IRSA_ATTEMPT_MS = 25000;
 const PREFIX_BYTES = 18 * 1024 * 1024;
 const MAX_DOWNLOAD_BYTES = 100 * 1024 * 1024;
 const cache = new Map();
@@ -18,6 +21,23 @@ export function exposureUrl(value) {
   )
     throw new Error('Only original SPHEREx exposure files are accepted.');
   return url.href;
+}
+
+/** The AWS mirror URL for an already validated IRSA exposure URL. */
+export function mirrorUrl(source) {
+  return S3_MIRROR + new URL(source).pathname.replace(/^\/ibe\/data\/spherex\//, '');
+}
+
+async function download(url, signal, timeoutMs) {
+  const attempt = timeoutMs ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)]) : signal;
+  const response = await fetch(url, {
+    signal: attempt,
+    redirect: 'error',
+    headers: { Range: `bytes=0-${PREFIX_BYTES - 1}` },
+  });
+  if (![200, 206].includes(response.status))
+    throw new Error(`Original exposure is unavailable (IRSA ${response.status}).`);
+  return readPrefix(response);
 }
 
 function rangedLength(response) {
@@ -102,14 +122,14 @@ export async function exposureRoute(req, res, next = () => {}) {
   try {
     let image = cache.get(source);
     if (!image) {
-      const response = await fetch(source, {
-        signal: controller.signal,
-        redirect: 'error',
-        headers: { Range: `bytes=0-${PREFIX_BYTES - 1}` },
-      });
-      if (![200, 206].includes(response.status))
-        throw new Error(`Original exposure is unavailable (IRSA ${response.status}).`);
-      const bytes = await readPrefix(response);
+      let bytes;
+      try {
+        bytes = await download(source, controller.signal, IRSA_ATTEMPT_MS);
+      } catch (error) {
+        if (controller.signal.aborted) throw error;
+        // Same file, same bytes, from IRSA's AWS mirror when IRSA's own file server fails.
+        bytes = await download(mirrorUrl(source), controller.signal);
+      }
       image = extractScienceImage(bytes.buffer);
       if (cache.size >= 3) cache.delete(cache.keys().next().value);
       cache.set(source, image);

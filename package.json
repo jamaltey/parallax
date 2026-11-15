@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test",
+    "index:spherex": "node scripts/build-spherex-index.mjs --collection spherex_dr1 && node scripts/build-spherex-index.mjs --collection spherex_qr3",
     "format": "prettier --write . --config .prettierrc",
     "start": "node server/index.js"
   },

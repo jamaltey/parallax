@@ -171,7 +171,14 @@ export async function searchSpherex(position, collection, { signal } = {}) {
     } catch {}
     throw new Error(message);
   }
-  return parseArchiveTable(await response.text());
+  // Where the rows came from: live IRSA (sia/tap), or a fallback while IRSA search is down.
+  const header = name => response.headers.get(name) || null;
+  return {
+    rows: parseArchiveTable(await response.text()),
+    source: header('X-Parallax-Archive-Source') || 'sia',
+    savedAt: header('X-Parallax-Archive-Saved-At'),
+    indexBuiltAt: header('X-Parallax-Index-Built-At'),
+  };
 }
 
 // Match IRSA's own Aladin Lite 3.8.2 cube viewer: setSliceNumber steps in
