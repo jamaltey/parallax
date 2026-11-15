@@ -1,23 +1,25 @@
-import { useState } from 'react';
-import { validatePosition } from '../lib/coordinates';
+import { useEffect, useState } from 'react';
+import { parsePosition } from '../lib/coordinates';
 import { explorerUrl } from '../lib/explorerUrl';
+import { CHALLENGE_TARGETS, positionAtEpoch } from '../lib/challengeTargets';
 
 export default function PositionForm({ onApply, position }) {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState('');
+  const [fields, setFields] = useState(() => ({
+    ra: String(position.ra),
+    dec: String(position.dec),
+    fov: String(position.fov),
+  }));
+  useEffect(
+    () =>
+      setFields({ ra: String(position.ra), dec: String(position.dec), fov: String(position.fov) }),
+    [position.ra, position.dec, position.fov]
+  );
   function submit(event) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
     try {
-      const position = validatePosition(
-        Object.fromEntries(
-          ['ra', 'dec', 'fov'].map(key => [
-            key,
-            data.get(key).trim() === '' ? NaN : Number(data.get(key)),
-          ])
-        )
-      );
-      onApply(position);
+      onApply(parsePosition(fields));
       setError('');
     } catch (e) {
       setError(e.message);
@@ -49,23 +51,47 @@ export default function PositionForm({ onApply, position }) {
         Navigate
       </div>
       <h2>Choose your patch of sky</h2>
+      <div className="space-y-2">
+        <p className="text-xs text-[#9a9aa3]">Try a challenge test target</p>
+        <div className="flex flex-wrap gap-2">
+          {CHALLENGE_TARGETS.map(target => (
+            <button
+              key={target.id}
+              type="button"
+              className="px-2.5 py-1.5 text-xs"
+              onClick={() => {
+                const next = positionAtEpoch(target);
+                setFields({ ra: next.ra.toFixed(7), dec: next.dec.toFixed(7), fov: '2' });
+                onApply(next);
+                setError('');
+              }}
+            >
+              {target.name}
+            </button>
+          ))}
+        </div>
+        <p className="text-[0.68rem] leading-relaxed text-[#777781]">
+          High-proper-motion target positions are adjusted to the current observing year.
+        </p>
+      </div>
       <div className="grid grid-cols-3 gap-3">
         {[
-          ['ra', 'RA / deg', 0, 359.999999],
-          ['dec', 'Dec / deg', -90, 90],
-          ['fov', 'FOV / deg', 0.01, 180],
-        ].map(([key, label, min, max]) => (
+          ['ra', 'RA', '83.633 or 05h34m31.9s'],
+          ['dec', 'Dec', '22.0145 or +22d00m52s'],
+          ['fov', 'FOV / deg', '2'],
+        ].map(([key, label, placeholder]) => (
           <label key={key}>
             {label}
             <input
-              key={`${key}-${position[key]}`}
               name={key}
-              type="number"
-              step="any"
-              min={min}
-              max={max}
+              type="text"
+              inputMode={key === 'fov' ? 'decimal' : 'text'}
               required
-              defaultValue={position[key]}
+              placeholder={placeholder}
+              value={fields[key]}
+              onChange={event =>
+                setFields(previous => ({ ...previous, [key]: event.target.value }))
+              }
             />
           </label>
         ))}
@@ -82,7 +108,7 @@ export default function PositionForm({ onApply, position }) {
         </p>
       )}
       <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
-        ICRS decimal degrees. Shareable links preserve this sky position.
+        ICRS decimal degrees or sexagesimal coordinates. Shareable links preserve this sky position.
       </p>
       <details className="rounded-lg border border-white/10 p-3 text-sm">
         <summary className="cursor-pointer text-violet-200">Share or embed this view</summary>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { officialExplorerUrl, searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
+import { buildObservationTimeline } from '../lib/timelineSelection';
 
 const day = value =>
   value ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' }) : null;
@@ -28,6 +29,7 @@ export default function SpherexArchive({
     fallback: null,
   });
   const request = useRef(null);
+  const timeline = buildObservationTimeline(state.rows);
   useEffect(() => {
     request.current?.abort();
     search();
@@ -102,8 +104,9 @@ export default function SpherexArchive({
           <p className="leading-relaxed">
             Searching around RA {position.ra}°, Dec {position.dec}° with a 1 arcsecond radius.
             Changing the viewer zoom does not change this search area. Results come from the IRSA
-            archive. Timeline images load only when selected and are cached after viewing.
-            Downloading an original FITS file does not change the viewer.
+            archive. The comparison timeline keeps one wavelength band and spreads images across the
+            available dates, so a wavelength change is not mistaken for a time change. Downloading
+            an original FITS file does not change the viewer.
           </p>
           <a className="underline" href={SPHEREX_TUTORIAL} target="_blank" rel="noreferrer">
             Official data tutorial ↗
@@ -140,9 +143,14 @@ export default function SpherexArchive({
               : 'No images found for these coordinates and collection.'}
           </p>
           {state.rows.length > 0 && onLoadExposures && (
-            <button onClick={() => onLoadExposures(state.rows)}>
-              Display all {state.rows.length} in timeline
-            </button>
+            <div className="text-right">
+              <button onClick={() => onLoadExposures(timeline.rows)}>
+                Build {timeline.rows.length}-image time comparison
+              </button>
+              <p className="mt-1 text-[0.68rem] text-[#777781]">
+                {timeline.band} · {timeline.available} matching images available
+              </p>
+            </div>
           )}
         </div>
       )}

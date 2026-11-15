@@ -160,7 +160,29 @@ function exposureRow(index, obs, detector) {
   };
 }
 
-/** Exposures whose detector footprint contains (ra, dec), earliest first, max 50. */
+function timeSpreadRows(rows, limit = MAX_ROWS) {
+  if (rows.length <= limit) return rows;
+  const groups = new Map();
+  for (const row of rows) {
+    const group = groups.get(row.energy_bandpassname) || [];
+    group.push(row);
+    groups.set(row.energy_bandpassname, group);
+  }
+  const orderedGroups = [...groups.values()].sort((a, b) => b.length - a.length);
+  const base = Math.floor(limit / orderedGroups.length);
+  let remainder = limit % orderedGroups.length;
+  const result = [];
+  for (const group of orderedGroups) {
+    const quota = Math.min(group.length, base + (remainder-- > 0 ? 1 : 0));
+    if (quota === 1) result.push(group[0]);
+    else
+      for (let index = 0; index < quota; index++)
+        result.push(group[Math.round((index * (group.length - 1)) / (quota - 1))]);
+  }
+  return result.sort((a, b) => a.t_min - b.t_min || a.access_url.localeCompare(b.access_url));
+}
+
+/** Exposures whose detector footprint contains (ra, dec), time-spread per detector, max 50. */
 export function searchIndex(index, ra, dec) {
   const sinDec = Math.sin(dec * RAD);
   const cosDec = Math.cos(dec * RAD);
@@ -224,7 +246,7 @@ export function searchIndex(index, ra, dec) {
     }
   }
   rows.sort((a, b) => a.t_min - b.t_min || a.access_url.localeCompare(b.access_url));
-  return rows.slice(0, MAX_ROWS);
+  return timeSpreadRows(rows);
 }
 
 /** SIA-shaped TSV for the frontend, or null when no index exists for this collection. */

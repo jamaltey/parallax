@@ -54,8 +54,8 @@ export default function Timeline({
             <span>
               {preload.running
                 ? `Preparing all images · ${preload.completed} of ${preload.total}`
-                : preload.failed
-                  ? `Prepared ${preload.total - preload.failed} of ${preload.total} images`
+                : preload.failed || preload.skipped
+                  ? `Prepared ${preload.total - preload.failed - (preload.skipped || 0)} of ${preload.total} images`
                   : `All ${preload.total} images prepared`}
             </span>
             <span className="flex items-center gap-3">
@@ -72,10 +72,13 @@ export default function Timeline({
             max={preload.total}
             value={preload.completed}
           />
-          {(preload.failed > 0 || preload.storageFailed > 0) && (
+          {(preload.failed > 0 || preload.storageFailed > 0 || preload.skipped > 0) && (
             <p className="text-xs leading-relaxed text-amber-200">
               {preload.failed > 0
                 ? `${preload.failed} images could not be prepared and will retry when selected. `
+                : ''}
+              {preload.skipped > 0
+                ? `${preload.skipped} images were left on-demand to respect this device's storage limit. `
                 : ''}
               {preload.storageFailed > 0
                 ? 'Browser storage is limited, so some prepared images may need quick reprocessing when selected.'
@@ -108,7 +111,7 @@ export default function Timeline({
       </div>
       <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
         {imageMode
-          ? 'Original exposure images load as you select them. Viewed images are cached for faster switching and playback; wavelengths can vary across the detector.'
+          ? 'This timeline uses one wavelength band. Images are cached for fast switching; preloading is capped to protect device storage.'
           : 'Loops through observation metadata only. No epoch image playback is connected.'}
       </p>
     </section>

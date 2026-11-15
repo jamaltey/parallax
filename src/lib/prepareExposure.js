@@ -65,29 +65,50 @@ export function prepareExposureDisplay(exposure, { signal } = {}) {
 
 export async function preloadExposureDisplays(
   exposures,
-  { signal, concurrency = 2, onProgress } = {}
+  { signal, concurrency = 2, maxBytes = Infinity, onProgress } = {}
 ) {
   const rows = [...new Map(exposures.map(exposure => [exposure.id, exposure])).values()];
   let cursor = 0;
   let completed = 0;
   let failed = 0;
   let storageFailed = 0;
+  let preparedBytes = 0;
+  let skipped = 0;
   const next = async () => {
     while (!signal?.aborted) {
       const index = cursor++;
       if (index >= rows.length) return;
+      if (preparedBytes >= maxBytes) {
+        skipped++;
+        completed++;
+        onProgress?.({ completed, total: rows.length, failed, storageFailed, skipped });
+        continue;
+      }
       try {
         const prepared = await prepareExposureDisplay(rows[index], { signal });
+        preparedBytes += prepared.displayBuffer.byteLength;
         if (!(await prepared.persistPromise)) storageFailed++;
       } catch (error) {
         if (error.name === 'AbortError') return;
         failed++;
       } finally {
         completed++;
-        onProgress?.({ completed, total: rows.length, failed, storageFailed });
+        onProgress?.({ completed, total: rows.length, failed, storageFailed, skipped });
       }
     }
   };
   await Promise.all(Array.from({ length: Math.min(concurrency, rows.length) }, next));
-  return { completed, total: rows.length, failed, storageFailed };
+  return { completed, total: rows.length, failed, storageFailed, skipped };
+}
+
+export async function recommendedPreloadBudget() {
+  const hardLimit = 256 * 1024 * 1024;
+  try {
+    const estimate = await globalThis.navigator?.storage?.estimate?.();
+    if (!estimate?.quota) return hardLimit;
+    const available = Math.max(0, estimate.quota - (estimate.usage || 0));
+    return Math.min(hardLimit, Math.floor(available * 0.35));
+  } catch {
+    return hardLimit;
+  }
 }

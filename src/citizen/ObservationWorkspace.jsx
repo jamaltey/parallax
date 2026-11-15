@@ -5,7 +5,7 @@ import Timeline from '../components/Timeline';
 import ComparisonPanel from '../components/ComparisonPanel';
 import CandidateForm from './CandidateForm';
 import { validateExposure } from './model';
-import { preloadExposureDisplays } from '../lib/prepareExposure';
+import { preloadExposureDisplays, recommendedPreloadBudget } from '../lib/prepareExposure';
 
 export default function ObservationWorkspace({
   position,
@@ -47,6 +47,7 @@ export default function ObservationWorkspace({
     total: 0,
     failed: 0,
     storageFailed: 0,
+    skipped: 0,
   });
   const current = active ? frames[index] : null;
   const visibleMarkers = useMemo(
@@ -148,14 +149,24 @@ export default function ObservationWorkspace({
   }, [comparisonStatus.stats, comparison.method]);
   useEffect(() => () => preloadController.current?.abort(), []);
 
-  function preloadSequence(rows) {
+  async function preloadSequence(rows) {
     preloadController.current?.abort();
     const controller = new AbortController();
     preloadController.current = controller;
-    setPreload({ running: true, completed: 0, total: rows.length, failed: 0, storageFailed: 0 });
+    setPreload({
+      running: true,
+      completed: 0,
+      total: rows.length,
+      failed: 0,
+      storageFailed: 0,
+      skipped: 0,
+    });
+    const maxBytes = await recommendedPreloadBudget();
+    if (controller.signal.aborted) return;
     preloadExposureDisplays(rows, {
       signal: controller.signal,
       concurrency: 2,
+      maxBytes,
       onProgress: progress => {
         if (preloadController.current === controller && !controller.signal.aborted)
           setPreload({ running: progress.completed < progress.total, ...progress });
