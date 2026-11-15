@@ -82,6 +82,16 @@ No API key or account is required. See the in-app [`/developers`](https://parall
 
 Parallax reports are community-generated, unverified candidates. Community agreement is not scientific confirmation, and no community-submission data license has yet been established.
 
+## Share or embed the sky explorer
+
+Any ICRS position can be opened directly with URL parameters:
+
+```text
+https://parallax.dcephei.earth/?ra=83.633&dec=22.0145&fov=2#explorer
+```
+
+Add `embed=1` for a compact iframe layout. The explorer's coordinate panel can copy both the direct link and complete iframe markup. `ra` and `dec` are required decimal degrees; `fov` is optional and defaults to 2°. Invalid coordinates are rejected visibly and fall back to the safe starting position. See the [developer page](https://parallax.dcephei.earth/developers) for an embed example.
+
 ## Data and scientific limits
 
 Mission data comes from **NASA/SPHEREx via Caltech/IPAC IRSA**: the [all-sky wavelength cube](https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/) and [original spectral images](https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/). Included DSS/2MASS tutorial images are clearly labeled and cannot be submitted as SPHEREx candidates.

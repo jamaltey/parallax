@@ -3,68 +3,84 @@ import { isSoundEnabled, onSoundChange, playStar, setSoundEnabled } from '../lib
 
 const STEPS = [
   {
+    title: 'Welcome to Parallax',
+    text: 'You do not need to be an astronomer. Parallax helps you look at real infrared images of the sky, compare when they were taken, and share anything interesting with other people.',
+    tip: 'In this tour: choose a place → find images → compare them → mark an object → share with Community.',
+  },
+  {
     target: 'coordinates',
-    title: 'Choose a patch of sky',
-    text: 'RA and Dec locate a point in the sky, in degrees. Field of view sets how much sky you see. Enter values and select Explore coordinates to navigate.',
+    title: '1. Choose a place in the sky',
+    text: 'RA and Dec are the sky’s version of longitude and latitude. FOV means “field of view”—a larger number shows more sky. You can keep the starting values and select Explore coordinates.',
+    tip: 'Not sure what to enter? The starting position is near the Crab Nebula and is ready to use.',
   },
   {
     target: 'samples',
-    title: 'Choose your image',
-    text: 'The real SPHEREx DR1 mosaic opens by default. Select a wavelength to change its image layer. Search IRSA for original exposures at your applied coordinates. Change sky map also offers local Horsehead and 2MASS samples and the DSS2 reference sky.',
+    title: '2. Explore the infrared sky',
+    text: 'Drag the map to move and use the + and − buttons to zoom. The colours show infrared brightness, not the colours your eyes would see. Try another wavelength to reveal different details.',
+    tip: 'The large sky map combines images from different times. Use it to choose a location; use individual observations for marking and comparison.',
   },
   {
-    target: 'atlas',
-    title: 'Make yourself at home',
-    text: 'Drag the sky to look around and scroll over the atlas to zoom. Its own coordinate and layer controls stay available. Each local image has a limited footprint.',
+    target: 'samples',
+    title: '3. Find real observations',
+    text: 'Select Find images here. Parallax asks NASA’s SPHEREx archive for individual images that cover this position. Add the results to the timeline to browse them with one slider.',
+    tip: 'An observation is one image taken at a particular time and infrared detector band. Archive outages can sometimes make a search temporarily unavailable.',
   },
   {
     target: 'timeline',
-    title: 'Compare real observations',
-    text: 'Open an image from the archive results to start your timeline. Return to the sky map to add more images, then use the arrows or Play to switch between them. Each date belongs to a real SPHEREx observation. Different wavelengths can also change how an object looks.',
+    title: '4. Travel through the images',
+    text: 'Move the timeline slider or select Play images to switch between observation dates. Parallax preloads the selected results, so revisiting a ready image should be quick.',
+    tip: 'A change in appearance can come from time, wavelength, image coverage, or an artifact. It is a clue to investigate—not proof of a discovery.',
   },
   {
     target: 'compare',
-    title: 'Compare two observations',
-    text: 'Open two real images, choose reference A and comparison B, then use aligned overlay, blink, or B − A residuals. Return to Original view before placing or confirming a marker.',
+    title: '5. Compare and mark what you see',
+    text: 'Choose two timeline images as A and B, then use Overlay, Blink, or Difference to look for change. Return to Original view, select Mark Object, and click the object. Mark it again in another observation if it moved.',
+    tip: 'Your markers use sky coordinates, so earlier markers remain visible while you inspect another image. You can reposition or remove them before reporting.',
   },
   {
     target: 'sound',
     title: 'Listen to the stars',
-    text: 'Every sound here is synthesized live in your browser with the Web Audio API. There are no audio files. Hover a background star, or rest the atlas reticle on a catalogued star, and it plays a short note with a soft echo. The Sound button in the corner switches this on or off, and your choice is remembered. Browsers only allow sound after your first click or key press. To keep things gentle, at most 4 sounds ring at once, and new ones start at least 80 ms apart.',
+    text: 'Parallax creates star sounds live in your browser with the Web Audio API—there are no prerecorded audio files. Hover over a background star, or aim the map’s centre reticle at a catalogued star, to hear a short note and soft echo. Use the Sound button in the corner to switch this on or off; your choice is remembered.',
+    tip: 'Browsers allow sound only after your first click or key press. Parallax keeps the sound gentle by limiting how many notes can play together and how quickly new notes begin.',
     lab: 'first',
   },
   {
     title: 'Colour becomes pitch',
-    text: 'A star’s colour shows how hot its surface is. Red stars (class M, about 3,000 K) are cool, and blue stars (classes O and B, 10,000 K and more) are hot. Pitch follows the same order: red plays low, blue plays high. Notes always come from a five-note pentatonic scale, so stars sounding together stay in harmony. In the atlas, the colour comes from the star’s real spectral type in the SIMBAD catalogue (the Sun, for example, is G2).',
+    text: 'A star’s colour tells astronomers about its surface temperature. Cool red stars, such as class M stars near 3,000 K, play lower notes. Hot blue stars, such as classes O and B above roughly 10,000 K, play higher notes. The notes use a five-note pentatonic scale so nearby stars still sound harmonious.',
+    tip: 'When Parallax identifies a real star on the map, its colour comes from the star’s spectral type in the SIMBAD catalogue. The Sun, for example, is a G-type star.',
     lab: 'colour',
   },
   {
     title: 'Every star has its own voice',
-    text: 'Each star gets one of six instruments (bell, flute, pluck, chime, retro or wobble) and its own phrase of 1–3 notes. Both are worked out from the star’s identity, so a star always sounds the same and its neighbours sound different. Background stars also play from the left or right speaker, depending on where they are on screen.',
+    text: 'Parallax gives each star one of six sounds—bell, flute, pluck, chime, retro, or wobble—and a short phrase of one to three notes. Both are calculated from the star’s identity, so the same star keeps the same voice while neighbouring stars can sound different.',
+    tip: 'Background stars also sound farther left or right depending on where they appear on your screen.',
     lab: 'voice',
   },
   {
     target: 'atlas',
     title: 'Aim the reticle at a star',
-    text: 'The crosshair in the middle of the atlas is the reticle. When you stop moving the sky with a star under it, the app looks the object up in SIMBAD and plays that star. Expect a short delay while the catalogue answers. Only stars make sound; galaxies, nebulae and empty sky stay quiet. A star won’t repeat until you aim somewhere else and come back. Try these after the tour:',
+    text: 'The crosshair in the centre of the sky map is the reticle. Stop moving the map with a star beneath it and Parallax asks the SIMBAD catalogue what is there. A catalogued star plays its sound after a short delay; galaxies, nebulae, and empty sky stay quiet. Move away and return if you want to hear the star again.',
     tasks: [
-      'Enter RA 88.79, Dec 7.41 (Betelgeuse, a cool red supergiant) and explore, then nudge the sky so the reticle settles on it. Listen for a low note.',
-      'Now go to RA 78.63, Dec −8.20 (Rigel, a hot blue supergiant). Does it sound higher?',
-      'Go back to Betelgeuse. Is its sound exactly the same as before?',
-      'Drag to an empty patch of sky. Silence means there is no catalogued star under the reticle.',
+      'Enter RA 88.79 and Dec 7.41 for Betelgeuse, a cool red supergiant. Explore, then gently move the map until the reticle rests on it. Listen for a low note.',
+      'Next enter RA 78.63 and Dec −8.20 for Rigel, a hot blue supergiant. Does it sound higher?',
+      'Return to Betelgeuse. Its sound should be the same as before because its voice comes from its identity.',
+      'Move the reticle to empty sky. Silence can simply mean there is no catalogued star at that point.',
     ],
+    tip: 'A catalogue match provides helpful context, but it does not prove that the catalogue object is the exact source visible in a SPHEREx image.',
+  },
+  {
+    title: '6. Share with the Community',
+    text: 'When your marked image is ready, select Report candidate. Describe what changed and choose your confidence. Your report appears in Community, where other people can reopen the same original observations and make an independent assessment.',
+    tip: 'A Candidate needs further investigation. Community agreement is helpful discussion, but it is not scientific confirmation and does not mean an object is Planet X.',
   },
 ];
 
 const labButton =
   'rounded-md bg-[#ffffff0d] px-3 py-1.5 text-[0.75rem] text-[#ececef] [border:1px_solid_#ffffff30] hover:border-[#a78bfa88] hover:text-[#c4b5fd]';
 
-/** Tutorial sound demos and mini tasks. data-sound="off" stops the global button sound from
- * taking the 80 ms throttle slot right before the demo note. */
 function SoundLab({ kind }) {
   const [on, setOn] = useState(isSoundEnabled);
   useEffect(() => onSoundChange(setOn), []);
-  // Fresh random answer each time the step opens, so the quiz really needs listening.
   const [hotter] = useState(() => (Math.random() < 0.5 ? 'A' : 'B'));
   const [twin] = useState(() => ['1 & 2', '1 & 3', '2 & 3'][Math.floor(Math.random() * 3)]);
   const [answer, setAnswer] = useState(null);
@@ -115,11 +131,11 @@ function SoundLab({ kind }) {
       {kind === 'voice' && (
         <>
           <strong className="text-[#ececef]">
-            Mini task: these stars share one colour, but two of them are the same star. Which two?
+            Mini task: these stars share one colour, but two are the same star. Which two?
           </strong>
           <div className="flex flex-wrap gap-2">
-            {voiceIds.map((v, i) =>
-              button(`▶ Star ${i + 1}`, () => playStar(0.5, 0, `tour|voice-${v}`))
+            {voiceIds.map((voice, index) =>
+              button(`▶ Star ${index + 1}`, () => playStar(0.5, 0, `tour|voice-${voice}`))
             )}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -131,9 +147,9 @@ function SoundLab({ kind }) {
         <p className="m-0!" role="status">
           {answer === 'right'
             ? kind === 'colour'
-              ? 'Correct! A higher note means a hotter, bluer star.'
-              : 'Correct! The same star always plays the same instrument and phrase.'
-            : 'Not quite. Listen to each one again and try once more.'}
+              ? 'Correct! A higher note represents a hotter, bluer star.'
+              : 'Correct! The same star keeps the same instrument and phrase.'
+            : 'Not quite. Listen again and try once more.'}
         </p>
       )}
     </div>
@@ -237,7 +253,17 @@ export default function Tutorial({ onClose }) {
             ))}
           </ol>
         )}
+        {STEPS[step].tip && (
+          <p className="mt-4 rounded-lg border border-violet-300/20 bg-violet-300/5 p-3.5 text-violet-100!">
+            <strong>Good to know:</strong> {STEPS[step].tip}
+          </p>
+        )}
         {STEPS[step].lab && <SoundLab key={step} kind={STEPS[step].lab} />}
+        {step === STEPS.length - 1 && (
+          <a className="mt-3 inline-block text-sm text-violet-300 underline" href="/community">
+            Visit Community ↗
+          </a>
+        )}
         <div className="tour-actions mt-6 flex justify-between gap-3.5 [&_>_button]:min-h-11 [&_>_button]:px-5 [&_>_button]:py-3">
           <button
             className="action-outline inline-flex min-h-12 items-center justify-center gap-6.25 rounded-[7px] bg-[#0e0e1144] px-5.5 py-3.75 text-[0.8rem] leading-[1.3] font-medium text-[#ececef] [border:1px_solid_#ffffff30] [transition:background_0.2s,border-color_0.2s] [&:hover]:border-[#a78bfa88] [&:hover]:bg-[#a78bfa09] [&:hover]:text-[#c4b5fd]"

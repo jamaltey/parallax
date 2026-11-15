@@ -214,6 +214,35 @@ for candidate in response.json()["data"]:
           </div>
         </section>
 
+        <section className={`${panel} space-y-4`} aria-labelledby="embed-explorer">
+          <p className="text-xs tracking-[0.16em] text-violet-300 uppercase">Shareable explorer</p>
+          <h2 id="embed-explorer" className="text-2xl">
+            Open or embed any sky position
+          </h2>
+          <p className="text-sm leading-relaxed text-[#aaa2bb]">
+            Pass ICRS coordinates in decimal degrees with <code>ra</code>, <code>dec</code>, and an
+            optional <code>fov</code>. Add <code>embed=1</code> for the compact iframe layout. The
+            same validation limits apply as in the explorer: RA is 0–&lt;360°, Dec is −90–+90°, and
+            FOV is 0.01–180°.
+          </p>
+          <pre className={code}>
+            <code>{`https://parallax.dcephei.earth/?ra=83.633&dec=22.0145&fov=2#explorer
+
+<iframe
+  src="https://parallax.dcephei.earth/?ra=83.633&dec=22.0145&fov=2&embed=1"
+  title="Parallax sky explorer"
+  width="100%"
+  height="900"
+  loading="lazy"
+></iframe>`}</code>
+          </pre>
+          <p className="text-xs leading-relaxed text-[#8f8999]">
+            Embedded views load the same real archive tools and remain dependent on Parallax, Aladin
+            Lite, and upstream NASA/IRSA service availability. The Parallax attribution and a link
+            to the full explorer remain visible.
+          </p>
+        </section>
+
         <section className="space-y-4" aria-labelledby="endpoints">
           <h2 id="endpoints" className="text-3xl">
             Endpoints
@@ -245,6 +274,31 @@ for candidate in response.json()["data"]:
             return 429, and temporary data-service failures return 503 or 504. Public limits may
             change as Parallax grows.
           </p>
+          <details className={panel}>
+            <summary className="cursor-pointer text-violet-200">Example response shapes</summary>
+            <p className="mt-3 text-sm text-[#9a9aa3]">
+              Placeholders below describe the contract; they are not presented as live records.
+            </p>
+            <pre className={`${code} mt-4`}>
+              <code>{`// GET /candidates
+{
+  "data": [{
+    "id": "CANDIDATE_UUID",
+    "type": "moving",
+    "report_position": { "ra_degrees": 0, "dec_degrees": 0 },
+    "observation_count": 2,
+    "review_statistics": { "review_count": 0, "agreement_percent": null },
+    "url": "https://parallax.dcephei.earth/community/CANDIDATE_UUID"
+  }],
+  "pagination": { "limit": 20, "offset": 0, "total": 1, "has_more": false },
+  "meta": { "scientific_disclaimer": "…" }
+}
+
+// GET /candidates/CANDIDATE_UUID adds sky_region and ordered observations.
+// GET /stats returns total_candidates, total_reviews,
+// candidates_awaiting_review, candidates_with_reviews, and by_type.`}</code>
+            </pre>
+          </details>
         </section>
 
         <Explorer />
