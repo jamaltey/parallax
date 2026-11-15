@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import SkyViewer from '../components/SkyViewer';
 import Timeline from '../components/Timeline';
+import ComparisonPanel from '../components/ComparisonPanel';
 import CandidateForm from './CandidateForm';
 import { validateExposure } from './model';
 
@@ -22,14 +23,37 @@ export default function ObservationWorkspace({
   const [error, setError] = useState('');
   const [report, setReport] = useState(false);
   const [visited, setVisited] = useState([]);
+  const [comparison, setComparison] = useState({
+    mode: 'original',
+    aId: initialFrames[0]?.id || '',
+    bId: initialFrames[1]?.id || '',
+    opacity: 50,
+    blink: false,
+    blinkMs: 800,
+    method: 'raw',
+    contrast: 1,
+  });
+  const [comparisonStatus, setComparisonStatus] = useState({ message: '', error: '', stats: null });
   const current = active ? frames[index] : null;
+  const comparisonView = {
+    ...comparison,
+    a: frames.find(frame => frame.id === comparison.aId),
+    b: frames.find(frame => frame.id === comparison.bId),
+  };
+  const comparisonActive =
+    comparison.mode !== 'original' &&
+    comparisonView.a &&
+    comparisonView.b &&
+    comparisonView.a.id !== comparisonView.b.id;
   const markingUnavailable = !current
     ? 'Start with “Find images here” below, then choose “Open image”. You can mark an object once the image is ready.'
     : !ready
       ? 'Marking will be available once this exposure loads successfully. If loading fails, use Retry in the viewer.'
-      : playing
-        ? 'Pause the observation timeline to mark an object.'
-        : '';
+      : comparisonActive
+        ? 'Return to Original view to place or confirm markers in the source observation.'
+        : playing
+          ? 'Pause the observation timeline to mark an object.'
+          : '';
   useEffect(() => {
     if (!playing || !ready || !active || frames.length < 2) return;
     const timer = setTimeout(() => {
@@ -39,6 +63,32 @@ export default function ObservationWorkspace({
     }, speed);
     return () => clearTimeout(timer);
   }, [playing, ready, active, index, frames.length, speed]);
+  useEffect(() => {
+    setComparison(previous => {
+      const aId = frames.some(frame => frame.id === previous.aId)
+        ? previous.aId
+        : frames[0]?.id || '';
+      const bId =
+        frames.some(frame => frame.id === previous.bId) && previous.bId !== aId
+          ? previous.bId
+          : frames.find(frame => frame.id !== aId)?.id || '';
+      return {
+        ...previous,
+        aId,
+        bId,
+        mode: frames.length >= 2 && aId && bId ? previous.mode : 'original',
+        blink: frames.length >= 2 && aId && bId ? previous.blink : false,
+      };
+    });
+  }, [frames]);
+  useEffect(() => {
+    if (
+      comparisonStatus.stats &&
+      !comparisonStatus.stats.rawCompatible &&
+      comparison.method === 'raw'
+    )
+      setComparison(previous => ({ ...previous, method: 'normalized' }));
+  }, [comparisonStatus.stats, comparison.method]);
   function add(frame) {
     try {
       validateExposure(frame);
@@ -146,7 +196,7 @@ export default function ObservationWorkspace({
           <button
             aria-pressed={markMode}
             aria-describedby={markingUnavailable ? 'marking-unavailable' : undefined}
-            disabled={!current || !ready || playing}
+            disabled={!current || !ready || playing || comparisonActive}
             onClick={() => setMarkMode(v => !v)}
           >
             {markMode ? 'Cancel marking' : marks[current?.id] ? 'Reposition marker' : 'Mark Object'}
@@ -202,12 +252,26 @@ export default function ObservationWorkspace({
           </p>
         )}
       </section>
+      <div data-tour="compare">
+        <ComparisonPanel
+          frames={frames}
+          value={comparison}
+          onChange={updater => {
+            setPlaying(false);
+            setMarkMode(false);
+            setComparison(updater);
+          }}
+          status={comparisonStatus}
+        />
+      </div>
       <SkyViewer
         position={investigation && current?.view ? current.view : position}
         exposure={current}
         marker={marks[current?.id]}
         reporterMarker={revealReporter ? initialFrames.find(f => f.id === current?.id) : null}
         markMode={markMode}
+        comparison={comparisonView}
+        onComparisonState={setComparisonStatus}
         onMark={mark => {
           setMarks(prev => ({ ...prev, [mark.id]: mark }));
           setMarkMode(false);

@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import ComparisonPanel from './components/ComparisonPanel';
 import PositionForm from './components/PositionForm';
 import ObservationWorkspace from './citizen/ObservationWorkspace';
 import Starfield from './components/Starfield';
@@ -96,9 +95,6 @@ export default function App() {
             <aside className="space-y-5">
               <div data-tour="coordinates">
                 <PositionForm onApply={setPosition} />
-              </div>
-              <div data-tour="compare">
-                <ComparisonPanel />
               </div>
             </aside>
             <div className="space-y-5">

@@ -4,6 +4,8 @@
 
 The **Spot something interesting?** panel reuses the existing Aladin viewer. Search IRSA, then choose **Open image** on an archive result. Use **Back to sky map / find images** to add further frames without losing markers. Select a frame, wait for it to load, click **Mark Object**, then click the object. Reposition by marking again, or remove the marker. Up to 12 original exposures can be included in a report. **Report candidate** opens the submission form. Motion reports require at least two distinct original observations at different UTC times.
 
+With two or more timeline images, **Compare** selects reference A and comparison B. Overlay, blink, raw `B − A`, and normalized visual residuals are reproduced locally from the original saved observations, including on community investigations. Derived layers are investigation-only: return to **Original view** to place or confirm a marker. This ensures every submitted coordinate is checked against an original image's finite TAN-SIP footprint. Comparison settings and derived bytes are not stored in the database and do not replace observation IDs, timestamps, URLs, checksums, or reporter markers.
+
 `/community` shows public candidates with type filters, newest/most-reviewed sorting, pagination, review counts, agreement, and unsure counts. `/community/:id` reloads the exact stored source URLs, in the saved order, without querying the latest archive. Reviewers begin without the reporter's markers or description. They must load all original frames before reviewing; after submitting, they can reveal the original markers and see community statistics. Self-review and duplicate reviews are blocked by PostgreSQL RLS/constraints as well as the interface.
 
 ### Supabase setup
@@ -21,7 +23,7 @@ See [Data sources and scientific limits](DATA_SOURCES.md#image-identity-and-scie
 
 ### Tests
 
-`npm test` includes captured IRSA metadata parsing, FITS/TAN-SIP footprint tests, Node Range and byte-identity tests, candidate validation, agreement math, and a PGlite PostgreSQL execution of the migration with two test identities. Database tests cover invalid provenance, ownership spoofing, self-review, duplicate votes, public reads, immutable status, and anonymous write denial. Tests run locally and do not write synthetic candidates to Supabase. There is no lint script.
+`npm test` includes captured IRSA metadata parsing, FITS/TAN-SIP footprint tests, WCS-aligned comparison fixtures, Node Range and byte-identity tests, candidate validation, agreement math, and a PGlite PostgreSQL execution of the migration with two test identities. Comparison fixtures test movement, brightness sign, shifted/rotated/scaled/SIP grids, RA wraparound, overlap/NaN masks, normalization, stale jobs, and unchanged original checksums. Database tests cover invalid provenance, ownership spoofing, self-review, duplicate votes, public reads, immutable status, and anonymous write denial. Tests run locally and do not write synthetic candidates to Supabase. There is no lint script.
 
 Main additions: `src/citizen/` (workspace, report form, community routes, model/API); `src/lib/supabase.js`; `src/lib/fits.js`; `server/exposure.js`; `supabase/migrations/`; and citizen-science tests. Existing `SkyViewer`, `Timeline`, archive search, navigation, and server routing are extended rather than replaced.
 
@@ -44,9 +46,10 @@ Automated tests execute the migration in local PGlite with separate identities; 
 Before presenting a configured deployment:
 
 1. Open a real archive image, mark it, switch frames, and confirm marker persistence. Mark a second observation at a different time for a motion report.
-2. Submit and reopen the candidate from Community; confirm exact image sequence, views, and metadata.
-3. Use a separate browser profile to obtain a different anonymous identity. Load every saved frame and submit an assessment.
-4. Confirm agreement/unsure counts and marker reveal. Confirm self-review and duplicate votes are refused.
-5. Check missing images, timeouts, and authentication failures. Do not insert synthetic training candidates into the real database.
+2. Select those frames as A/B. Verify the aligned opacity endpoints, blink, raw/normalized difference, overlap mask, swap sign, sensitivity control, center/zoom preservation, and return to Original view.
+3. Submit and reopen the candidate from Community; confirm exact image sequence, views, metadata, and local comparison reproduction.
+4. Use a separate browser profile to obtain a different anonymous identity. Load every saved frame and submit an assessment.
+5. Confirm agreement/unsure counts and marker reveal. Confirm self-review and duplicate votes are refused.
+6. Check missing images, incompatible units, no overlap, timeouts, processing failures, and authentication failures. Do not insert synthetic training candidates into the real database.
 
 Anonymous identity is tied to browser storage, not a verified person; multiple profiles can obtain different identities. Moderation, stronger abuse prevention, account recovery, and CAPTCHA UI are future work. No thumbnail is generated for community cards.

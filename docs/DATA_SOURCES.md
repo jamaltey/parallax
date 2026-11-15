@@ -32,6 +32,21 @@ Mosaic metadata and tiles load directly from IRSA without API keys. IRSA's SIA e
 
 Aladin Lite 3.8.2 renders these original TAN-SIP exposure headers blank. A browser worker now resamples a display-only copy from the original distorted pixel grid into the same undistorted TAN projection, using the original SIP coefficients and bilinear interpolation. Original FITS bytes, checksum, metadata, and the original WCS remain the basis for candidate provenance and valid-pixel marking. This display image is not a calibrated photometry product; quality flags are not masked. The Center image button restores the exposure footprint after panning away.
 
+## Overlay and difference imaging
+
+Comparison uses two original timeline observations. Image A defines an undistorted TAN output grid; it does **not** assume matching dimensions, pointing, scale, rotation, or SIP distortion. A Web Worker maps every output pixel through celestial ICRS coordinates into both original grids and bilinearly samples their float32 `IMAGE` pixels. Pixels outside either footprint, with failed SIP inversion, or with non-finite contributing samples remain NaN. Pairs with fewer than 0.01% valid common-grid pixels (minimum four for unit fixtures) are rejected as having no meaningful overlap.
+
+Overlay displays the aligned A and B FITS layers with identical overlap-derived 1st/99.5th percentile cuts. At 0% only A is visible; at 100% opaque B covers A. Blink alternates the aligned layers. The current release does not include the optional cyan/magenta two-color composite.
+
+Difference follows `D = B_aligned − A_aligned`:
+
+- **Raw B − A** is available only when both FITS files declare the same nonempty `BUNIT`. It preserves that declared unit but is labeled exploratory/uncalibrated.
+- **Normalized visual** subtracts each overlap median and divides by its robust MAD scale. It is dimensionless and handles constant/near-zero-scale images with a documented numerical floor.
+
+Both use a zero-centered blue-to-red diverging palette. Blue/negative means brighter in A; red/positive means brighter in B. Display sensitivity narrows or widens symmetric robust cuts without changing the derived pixel array. Different detector bands or archive wavelength bounds produce warnings. Even matching D1–D6 labels and nominal bounds do not establish per-pixel wavelength equivalence because SPHEREx wavelength varies across a detector.
+
+These tools do not apply quality flags, uncertainty weighting, background models beyond the optional median normalization, PSF matching, photometric scaling, source extraction, or motion fitting. A positive/negative residual pair can come from motion, but also wavelength response, brightness variability, noise, PSF changes, or artifacts. Derived FITS layers are local display products, are not offered as original NASA observations, and never replace stored IRSA provenance.
+
 ## Local FITS sample test
 
 The sky viewer opens the live SPHEREx mosaic by default. The Horsehead Nebula FITS sample remains available as a local fallback. Use **Change sky map** above the atlas to switch to the Galactic Center 2MASS J sample or return to the remote DSS2 reference sky. Each FITS image is served from `public/samples/` and parsed by Aladin's local WASM engine; no remote FITS conversion service is required. The viewer centers on each image's WCS coordinates. The files are copied into `dist/samples/` during production builds.
@@ -48,8 +63,8 @@ The representative DR1 source was 60,157,440 bytes; its extracted IMAGE-only FIT
 
 Transient IRSA HTTP 502 responses were observed during live testing. Retry visibly; do not change the scientific query or introduce synthetic results in response to an archive failure.
 
-Mosaic brightness uses a magma false-color palette, not visible-light color. Original exposures use an asinh display stretch with sampled percentile cuts, saved per marked frame. Do not interpret brightness changes across different detectors, wavelengths, stretches, or image artifacts as physical variability without further analysis. Display SIP correction is not cross-epoch image registration, PSF matching, or calibrated photometry.
+Mosaic brightness uses a magma false-color palette, not visible-light color. Original exposures use an asinh display stretch with sampled percentile cuts, saved per marked frame. Do not interpret brightness changes across different detectors, wavelengths, stretches, or image artifacts as physical variability without further analysis. The comparison worker performs cross-epoch WCS registration, but not PSF matching or calibrated photometry.
 
-The implemented workflow supports human candidate reporting and community assessment. Difference imaging and overlay are interface placeholders. Spectral extraction, calibrated photometry, automated object identification, motion fitting, catalog cross-matching, and Planet X discovery/confirmation are not implemented. A moving point or a high agreement score does not establish a new planet.
+The implemented workflow supports human candidate reporting, WCS-aligned exploratory comparison, and community assessment. Spectral extraction, calibrated photometry, validated scientific subtraction, automated object identification, motion fitting, catalog cross-matching, and Planet X discovery/confirmation are not implemented. A residual, moving point, or high agreement score does not establish a new planet.
 
 Official challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/). The URL was corroborated by a challenge index; the official page returned HTTP 502 during this documentation pass on 2026-11-14, so its full current text was not reverified. Mission data attribution remains NASA/SPHEREx · Caltech/IPAC IRSA. Parallax is an independent team project, with no implied NASA endorsement.

@@ -1,3 +1,5 @@
+import { celestialWcs } from './wcs.js';
+
 // Runtime-independent FITS IMAGE reader shared by the browser and Node.js server.
 // No reprojection, subtraction, resampling, or flux calibration is performed.
 const decoder = new TextDecoder('ascii');
@@ -82,54 +84,7 @@ export function scienceImage(buffer) {
     !String(h.CTYPE2).startsWith('DEC--TAN')
   )
     throw new Error('This image does not have a supported celestial TAN WCS.');
-  const cd = [
-    h.CD1_1 ?? (h.PC1_1 ?? 1) * h.CDELT1,
-    h.CD1_2 ?? (h.PC1_2 ?? 0) * h.CDELT1,
-    h.CD2_1 ?? (h.PC2_1 ?? 0) * h.CDELT2,
-    h.CD2_2 ?? (h.PC2_2 ?? 1) * h.CDELT2,
-  ];
-  if (![h.CRVAL1, h.CRVAL2, h.CRPIX1, h.CRPIX2, ...cd].every(Number.isFinite))
-    throw new Error('Incomplete image WCS.');
-  const det = cd[0] * cd[3] - cd[1] * cd[2];
-  if (!det) throw new Error('Invalid image WCS.');
-  const rad = Math.PI / 180;
-  function polynomial(prefix, x, y) {
-    let result = 0;
-    const order = h[`${prefix}_ORDER`] || 0;
-    if (order > 9) throw new Error('Unsupported SIP order.');
-    for (let i = 0; i <= order; i++)
-      for (let j = 0; j <= order - i; j++)
-        result += (h[`${prefix}_${i}_${j}`] || 0) * x ** i * y ** j;
-    return result;
-  }
-  function pixelAt(ra, dec) {
-    const da = (ra - h.CRVAL1) * rad;
-    const d = dec * rad;
-    const d0 = h.CRVAL2 * rad;
-    const denominator = Math.sin(d) * Math.sin(d0) + Math.cos(d) * Math.cos(d0) * Math.cos(da);
-    if (denominator <= 0) return null;
-    const xi = (Math.cos(d) * Math.sin(da)) / denominator / rad;
-    const eta =
-      (Math.sin(d) * Math.cos(d0) - Math.cos(d) * Math.sin(d0) * Math.cos(da)) / denominator / rad;
-    const u = (cd[3] * xi - cd[1] * eta) / det;
-    const v = (-cd[2] * xi + cd[0] * eta) / det;
-    let x = u,
-      y = v;
-    for (let n = 0; n < 30; n++) {
-      const nx = u - polynomial('A', x, y),
-        ny = v - polynomial('B', x, y);
-      if (Math.abs(nx - x) + Math.abs(ny - y) < 1e-6) {
-        x = nx;
-        y = ny;
-        break;
-      }
-      x = nx;
-      y = ny;
-    }
-    if (Math.abs(x + polynomial('A', x, y) - u) + Math.abs(y + polynomial('B', x, y) - v) > 0.01)
-      return null;
-    return [x + h.CRPIX1 - 1, y + h.CRPIX2 - 1];
-  }
+  const pixelAt = celestialWcs(h).worldToPixel;
   const samples = [];
   const pixels = new DataView(buffer);
   const step = Math.max(1, Math.floor((h.NAXIS1 * h.NAXIS2) / 65536));

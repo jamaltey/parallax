@@ -9,7 +9,7 @@ Parallax has one supported production topology: the React build and Node API run
 ```text
 Browser
   ├─ React/Vite/Tailwind UI + Aladin Lite
-  ├─ browser FITS display Web Worker
+  ├─ browser FITS display + comparison Web Workers
   ├─ /api/spherex-exposures ─┐
   ├─ /api/spherex-image ─────┴─ Node.js on Render ── Caltech/IPAC IRSA
   └─ Supabase client ─────────── Supabase Auth/PostgreSQL
@@ -37,6 +37,21 @@ Browser
 6. Keeps at most three extracted images in process memory for fast replay.
 
 The upstream timeout is 60 seconds. No reprojection, resampling, subtraction, photometry, or calibration occurs on the server. Display-only SIP correction runs later in a browser worker; candidate identity and checksums use the unmodified extracted bytes.
+
+## Browser comparison pipeline
+
+`ComparisonPanel` selects reference A and comparison B from the existing observation workspace. `loadSpherexExposure()` retrieves both through the same validated Node image route, verifies observation/detector identity and any saved SHA-256, then transfers those dedicated comparison buffers to `compareFits.worker.js`. Existing provenance buffers are never transferred or detached.
+
+`wcs.js` is the single TAN/TAN-SIP transform used by original-footprint validation and comparison. The common output grid is image A's width, height, tangent point, reference pixel, and CD matrix with SIP removed. For every common-grid pixel the worker:
+
+1. Converts output pixel → ICRS RA/Dec with inverse TAN.
+2. Converts RA/Dec → original A and B pixels with TAN plus iterative inverse SIP.
+3. Bilinearly samples the original big-endian float32 arrays.
+4. Keeps the pixel only when every contributing sample is finite and both footprints cover it.
+
+The worker returns aligned A/B FITS layers, raw `B − A` only when both nonempty `BUNIT` strings match exactly, and a dimensionless normalized residual. Normalization subtracts each overlap median and divides by `1.4826 × MAD` with a safe near-zero floor. Difference display uses symmetric 99th-percentile absolute limits and Aladin's `rdbu` linear colormap. The sensitivity control changes only those display limits. Overlay layers use identical robust cuts; B opacity ranges from zero to one, and blink toggles the same aligned B layer.
+
+Only one pair is retained. Pair changes abort downloads, terminate the previous worker, ignore stale job IDs, revoke derived Blob URLs, and remove obsolete Aladin layers. The feature is full resolution; there is no silent preview downsampling. Marking is intentionally disabled in derived views, so candidate markers remain validated against original observations.
 
 ## Local development
 
@@ -94,6 +109,9 @@ src/
   lib/coordinates.js        coordinate validation shared by browser and Node imports
   lib/fits.js               runtime-independent FITS extraction and TAN/SIP footprint checks
   lib/renderFits*.js        browser-only display reprojection and Web Worker
+  lib/wcs.js                shared forward/inverse TAN-SIP celestial transforms
+  lib/compareFits*.js       aligned overlay/difference engine and Web Worker
+  lib/loadExposure.js       browser retrieval, identity and checksum validation
   lib/supabase.js           client and anonymous authentication
   components/               sky viewer, archive, timeline, tutorial and landing UI
   citizen/                  report, community, review, validation and persistence code
@@ -150,4 +168,8 @@ The current CLI displays the target and asks for confirmation. Do not use a proj
 
 ## Verification boundaries
 
-Automated tests cover coordinate/query validation, allowed and rejected FITS URLs, Range and non-Range upstream behavior, byte-identical extraction, WCS/pixels, display reprojection, candidate validation, agreement calculations, and PGlite execution of database policies with separate identities. Live archive behavior still depends on IRSA. A deployment should not be presented as verified until the browser checklist in [Citizen science](CITIZEN_SCIENCE.md#verification) succeeds against Render with two independent anonymous users.
+Automated tests cover coordinate/query validation, allowed and rejected FITS URLs, Range and non-Range upstream behavior, byte-identical extraction, WCS/pixels, display reprojection, comparison sign and normalization, shifted/rotated/scaled/SIP grids, RA wraparound, overlap masks, stale jobs, candidate validation, agreement calculations, and PGlite execution of database policies with separate identities.
+
+A full-resolution real comparison used DR1 `2025W37_1A_0290_1` D1 and QR3 `2026W37_2A_0218_1` D1. Both declared `MJy / sr` and the same nominal 0.7455–1.1167 µm archive bounds. Alignment retained 3,814,047 of 4,161,600 pixels (91.65%), took about 10.6 seconds in Node as a worker-algorithm proxy, and used about 95 MiB of ArrayBuffers after reducing intermediate copies. A 1/64 pixel sample of aligned layers had Pearson correlation 0.967, which is evidence of approximate registration for this pair, not independent scientific validation or proof of astrophysical residuals.
+
+Live archive behavior still depends on IRSA. Browser automation was unavailable during implementation, so Aladin interaction, opacity/blink controls, timeline/marker regressions, and the two-user citizen-science flow still require manual verification in the production browser. A deployment should not be presented as fully verified until the checklist in [Citizen science](CITIZEN_SCIENCE.md#verification) succeeds against Render.
