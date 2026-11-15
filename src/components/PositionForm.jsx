@@ -37,7 +37,7 @@ export default function PositionForm({ onApply }) {
         ].map(([key, label, value]) => (
           <label key={key}>
             {label}
-            <input name={key} type="number" step="any" required defaultValue={value} />
+            <input name={key} type="number" step="any" min={0.1} max={180} required defaultValue={value} />
           </label>
         ))}
       </div>

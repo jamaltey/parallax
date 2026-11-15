@@ -65,7 +65,7 @@ export default function ComparisonPanel({ frames, value, onChange, status, compa
       </p>
       {frames.length < 2 ? (
         <p className="rounded-lg border border-dashed border-[#42394e] p-3 text-xs text-[#aaa2bb]">
-          Open at least two real SPHEREx images to enable comparison.
+          Open at least two SPHEREx images to enable comparison.
         </p>
       ) : (
         <>

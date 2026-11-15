@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import PositionForm from './components/PositionForm';
 import ObservationWorkspace from './citizen/ObservationWorkspace';
-import Starfield from './components/Starfield';
 import Landing, { Mission } from './components/Landing';
+import PositionForm from './components/PositionForm';
+import Starfield from './components/Starfield';
 import Tutorial from './components/Tutorial';
 
 export default function App() {
@@ -27,7 +27,8 @@ export default function App() {
           href="#top"
           className="site-brand mobile:gap-1.75 mobile:text-[0.73rem] inline-flex items-center gap-3 text-[0.85rem] font-semibold tracking-[0.17em] whitespace-nowrap [&_>_span]:text-[24px] [&_>_span]:leading-none [&_>_span]:text-(--accent)"
         >
-          <span aria-hidden="true">✧</span> PARALLAX
+          <img className="size-10" src="delta-cephei-logo.svg" alt="" />
+          PARALLAX
         </a>
         <div className="nav-links laptop:gap-5 tablet:hidden flex gap-8 text-[0.78rem] text-[#adadb6] [&_a:hover]:text-(--accent)">
           <a href="#method">Method</a>
@@ -89,7 +90,7 @@ export default function App() {
           <div className="notice mobile:gap-2.25 mobile:p-3 mobile:text-[0.67rem] mb-6 flex items-baseline gap-3 rounded-[9px] bg-[#17141e] px-4.5 py-3.5 text-[0.73rem] leading-[1.8] text-[#aaa2bb] [border:1px_solid_#a78bfa28] [&_strong]:font-medium [&_strong]:text-[#c6b4e9]">
             <span className="status-dot inline-block h-1.25 w-1.25 shrink-0 rounded-[50%] bg-(--accent)" />
             <p>
-              <strong>Real SPHEREx observations</strong> · Explore the infrared sky map, then open
+              <strong>SPHEREx observations</strong> · Explore the infrared sky map, then open
               individual images from NASA’s archive to build your observation timeline.
             </p>
           </div>
