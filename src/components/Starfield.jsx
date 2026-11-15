@@ -1,4 +1,14 @@
 import { useEffect, useRef } from 'react';
+import { playStar } from '../lib/spaceAudio';
+
+// Subtle star tint: tone 0 (warm red) through white to 1 (cool blue).
+const starColor = tone => {
+  const t = tone * 2 - 1;
+  const r = Math.round(t < 0 ? 255 : 255 - 75 * t),
+    g = Math.round(228 - 30 * Math.abs(t)),
+    b = Math.round(t > 0 ? 255 : 255 + 85 * t);
+  return `rgb(${r},${g},${b})`;
+};
 
 export default function Starfield() {
   const ref = useRef(null);
@@ -29,12 +39,24 @@ export default function Starfield() {
       return (seed - 1) / 2147483646;
     };
 
-    const make = (z = random() * 0.95 + 0.05) => ({
-      x: (random() * 2 - 1) * 1.6,
-      y: (random() * 2 - 1) * 1.6,
-      z,
-      phase: random() * Math.PI * 2,
-    });
+    const make = (z = random() * 0.95 + 0.05) => {
+      const star = {
+        x: (random() * 2 - 1) * 1.6,
+        y: (random() * 2 - 1) * 1.6,
+        z,
+        phase: random() * Math.PI * 2,
+        sx: -1e4,
+        sy: -1e4,
+        r: 0,
+      };
+      // Tone reuses the phase draw so the seeded layout stays unchanged.
+      star.tone = star.phase / (Math.PI * 2);
+      star.color = starColor(star.tone);
+      // Stable per-star sound identity (survives resize, changes when a star respawns).
+      star.id = Math.round(star.phase * 1e9);
+      return star;
+    };
+    let hovered = null;
 
     function resize() {
       width = window.innerWidth;
@@ -76,15 +98,19 @@ export default function Starfield() {
           y = cy + ry * scale;
         if (x < -20 || x > width + 20 || y < -20 || y > height + 20) {
           if (!still && star.z < 0.3) Object.assign(star, make(1));
+          star.sx = -1e4;
           continue;
         }
         const near = 1 - star.z,
           radius = 0.3 + near * near * 1.8;
+        star.sx = x;
+        star.sy = y;
+        star.r = radius;
         ctx.globalAlpha = Math.min(
           0.8,
           (0.18 + near * 0.7) * (still ? 1 : 0.8 + 0.2 * Math.sin(time / 1000 + star.phase))
         );
-        ctx.fillStyle = '#e4e4e7';
+        ctx.fillStyle = star.color;
         if (!still && boost > 0.002) {
           const tail = focal / ((star.z + boost * 14) * 1.6);
           ctx.strokeStyle = '#c4b5fd';
@@ -117,6 +143,19 @@ export default function Starfield() {
     function pointer(event) {
       tx = event.clientX / width - 0.5;
       ty = event.clientY / height - 0.5;
+      if (event.pointerType === 'touch') return;
+      // Play once when the pointer enters a star (small hit radius around it).
+      let found = null;
+      for (const star of stars) {
+        const d = Math.hypot(star.sx - event.clientX, star.sy - event.clientY);
+        if (d < Math.max(6, star.r + 4)) {
+          found = star;
+          break;
+        }
+      }
+      if (found && found.id !== hovered)
+        playStar(found.tone, (found.sx / width) * 1.4 - 0.7, found.id);
+      hovered = found ? found.id : null;
     }
 
     resize();

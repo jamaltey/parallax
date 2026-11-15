@@ -4,6 +4,7 @@ import Landing, { Mission } from './components/Landing';
 import PositionForm from './components/PositionForm';
 import Starfield from './components/Starfield';
 import Tutorial from './components/Tutorial';
+import SoundToggle from './components/SoundToggle';
 
 export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function App() {
   return (
     <>
       <Starfield />
+      <SoundToggle />
       <a
         className="skip-link fixed -top-25 left-5 z-150 rounded-md bg-(--accent) p-3.5 text-[#0e0e11] focus:top-3"
         href="#explorer"
