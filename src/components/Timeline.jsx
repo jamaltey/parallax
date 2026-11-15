@@ -69,7 +69,7 @@ export default function Timeline({
       </div>
       <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
         {imageMode
-          ? 'Original exposure images. Playback waits for each image to load; wavelengths can vary across the detector.'
+          ? 'Original exposure images. Opened images are cached for faster playback; wavelengths can vary across the detector.'
           : 'Loops through observation metadata only. No epoch image playback is connected.'}
       </p>
     </section>

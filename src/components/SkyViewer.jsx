@@ -8,13 +8,18 @@ import {
   SPHEREX_CUBE_TUTORIAL,
 } from '../api/spherex';
 import SpherexArchive from './SpherexArchive';
-import { loadSpherexExposure } from '../lib/loadExposure';
+import {
+  cacheExposureDisplay,
+  getCachedExposureDisplay,
+  loadSpherexExposure,
+} from '../lib/loadExposure';
 import { isCurrentComparisonJob, overlayOpacities } from '../lib/comparison';
+import { exposureCacheKey, MAX_CACHED_EXPOSURES } from '../lib/exposureCache';
 export default function SkyViewer({
   position,
   exposure = null,
-  marker,
-  reporterMarker,
+  markers = [],
+  reporterMarkers = [],
   onMark,
   onAddExposure,
   onExposureReady,
@@ -27,10 +32,10 @@ export default function SkyViewer({
   // A fresh atlas prevents a stalled remote survey request from blocking FITS loading.
   return (
     <SkyViewerInstance
-      key={`${exposure?.id || sampleId}-${attempt}`}
+      key={attempt}
       exposure={exposure}
-      marker={marker}
-      reporterMarker={reporterMarker}
+      markers={markers}
+      reporterMarkers={reporterMarkers}
       onMark={onMark}
       onAddExposure={onAddExposure}
       onExposureReady={onExposureReady}
@@ -51,8 +56,8 @@ function SkyViewerInstance({
   setSampleId,
   retry,
   exposure,
-  marker,
-  reporterMarker,
+  markers,
+  reporterMarkers,
   onMark,
   onAddExposure,
   onExposureReady,
@@ -83,6 +88,8 @@ function SkyViewerInstance({
   });
   const comparisonJob = useRef(0);
   const comparisonLayers = useRef({ a: null, b: null, difference: null });
+  const exposureLayers = useRef(new Map());
+  const exposureLayerSequence = useRef(0);
   const comparisonView = useRef(null);
   const sample = SAMPLE_IMAGES.find(item => item.id === sampleId);
   const comparisonActive =
@@ -129,6 +136,14 @@ function SkyViewerInstance({
       viewer.current = null;
     };
   }, [id]);
+
+  useEffect(
+    () => () => {
+      for (const entry of exposureLayers.current.values()) URL.revokeObjectURL(entry.blobUrl);
+      exposureLayers.current.clear();
+    },
+    []
+  );
 
   useEffect(() => {
     if (viewer.current) {
@@ -188,10 +203,9 @@ function SkyViewerInstance({
           data.error ? reject(new Error(data.error)) : resolve(data.result);
         };
         worker.onerror = () => reject(new Error('The comparison worker stopped unexpectedly.'));
-        worker.postMessage({ jobId, aBuffer: loadedA.buffer, bBuffer: loadedB.buffer }, [
-          loadedA.buffer,
-          loadedB.buffer,
-        ]);
+        const aBuffer = loadedA.buffer.slice(0);
+        const bBuffer = loadedB.buffer.slice(0);
+        worker.postMessage({ jobId, aBuffer, bBuffer }, [aBuffer, bBuffer]);
       });
       if (controller.signal.aborted || jobId !== comparisonJob.current) return;
       clearTimeout(timer);
@@ -235,14 +249,37 @@ function SkyViewerInstance({
     const atlas = viewer.current;
     let cancelled = false;
     atlas.removeImageLayer('sample-fits');
+    for (const entry of exposureLayers.current.values()) entry.layer.setOpacity(0);
     if (comparisonActive) {
       setSampleState({ loading: false, error: '', loaded: false });
       return;
     }
     if (exposure) {
+      const cacheKey = exposureCacheKey(exposure);
+      const cachedLayer = exposureLayers.current.get(cacheKey);
+      if (
+        cachedLayer &&
+        (!exposure.imageHash || exposure.imageHash === cachedLayer.metadata.imageHash)
+      ) {
+        exposureLayers.current.delete(cacheKey);
+        exposureLayers.current.set(cacheKey, cachedLayer);
+        cachedLayer.layer.setOpacity(1);
+        const metadata = {
+          ...cachedLayer.metadata,
+          ...exposure,
+          display: exposure.display || cachedLayer.metadata.display,
+        };
+        science.current = { image: cachedLayer.image, metadata, view: cachedLayer.view };
+        setSampleState({ loading: false, error: '', loaded: true, cached: true });
+        callbacks.current.onExposureReady?.(true, metadata);
+        return () => {
+          science.current = null;
+        };
+      }
       const controller = new AbortController();
       let blobUrl;
       let renderWorker;
+      let layerCommitted = false;
       science.current = null;
       callbacks.current.onExposureReady?.(false);
       setSampleState({ loading: true, error: '', loaded: false });
@@ -266,36 +303,100 @@ function SkyViewerInstance({
         if (cancelled || controller.signal.aborted) return;
         // Retain the original buffer for provenance and marking. Aladin 3.8.2
         // renders these TAN-SIP images blank, so resample only the display copy.
-        const displayBuffer = await new Promise((resolve, reject) => {
-          renderWorker = new Worker(new URL('../lib/renderFits.worker.js', import.meta.url), {
-            type: 'module',
+        let displayBuffer = getCachedExposureDisplay(exposure);
+        if (!displayBuffer) {
+          displayBuffer = await new Promise((resolve, reject) => {
+            renderWorker = new Worker(new URL('../lib/renderFits.worker.js', import.meta.url), {
+              type: 'module',
+            });
+            renderWorker.onmessage = ({ data }) =>
+              data.error ? reject(new Error(data.error)) : resolve(data.buffer);
+            renderWorker.onerror = () =>
+              reject(new Error('Could not prepare the observation image.'));
+            renderWorker.postMessage(buffer);
           });
-          renderWorker.onmessage = ({ data }) =>
-            data.error ? reject(new Error(data.error)) : resolve(data.buffer);
-          renderWorker.onerror = () =>
-            reject(new Error('Could not prepare the observation image.'));
-          renderWorker.postMessage(buffer);
-        });
-        renderWorker.terminate();
+          renderWorker.terminate();
+          cacheExposureDisplay(exposure, displayBuffer);
+        }
         if (cancelled || controller.signal.aborted) return;
         blobUrl = URL.createObjectURL(new Blob([displayBuffer], { type: 'application/fits' }));
-        const rendered = await new Promise((resolve, reject) => {
-          Promise.resolve(
-            atlas.displayFITS(
-              blobUrl,
-              { name: `SPHEREx ${exposure.obsId} ${exposure.band}`, imgFormat: 'fits', ...display },
-              (ra, dec, fov) => resolve({ ra, dec, fov }),
-              () => reject(new Error('Could not render the original FITS exposure.')),
-              'sample-fits'
-            )
-          ).catch(reject);
+        const layerName = `exposure-${++exposureLayerSequence.current}`;
+        let layer;
+        const pixelScale = Math.max(
+          Math.hypot(image.header.CD1_1 || image.header.CDELT1 || 0, image.header.CD2_1 || 0),
+          Math.hypot(image.header.CD1_2 || 0, image.header.CD2_2 || image.header.CDELT2 || 0)
+        );
+        const initialView = {
+          ra: image.header.CRVAL1,
+          dec: image.header.CRVAL2,
+          fov: Math.max(image.header.NAXIS1, image.header.NAXIS2) * pixelScale,
+        };
+        let finishRender;
+        let failRender;
+        const renderCompletion = new Promise((resolve, reject) => {
+          finishRender = resolve;
+          failRender = reject;
         });
-        if (cancelled || controller.signal.aborted) return;
+        try {
+          layer = atlas.displayFITS(
+            blobUrl,
+            { name: `SPHEREx ${exposure.obsId} ${exposure.band}`, imgFormat: 'fits', ...display },
+            (ra, dec, fov) => finishRender({ ra, dec, fov }),
+            () => failRender(new Error('Could not render the original FITS exposure.')),
+            layerName
+          );
+          Promise.resolve(layer).catch(failRender);
+        } catch (error) {
+          failRender(error);
+          renderCompletion.catch(() => {});
+          throw error;
+        }
+        if (cancelled || controller.signal.aborted) {
+          atlas.removeImageLayer(layerName);
+          return;
+        }
+        const layerEntry = {
+          layer,
+          layerName,
+          blobUrl,
+          view: initialView,
+          image,
+          metadata,
+        };
+        exposureLayers.current.set(cacheKey, layerEntry);
+        layerCommitted = true;
+        renderCompletion
+          .then(rendered => {
+            const cached = exposureLayers.current.get(cacheKey);
+            if (cached?.layer === layer) cached.view = rendered;
+            if (science.current?.metadata.id === metadata.id)
+              science.current = { ...science.current, view: rendered };
+          })
+          .catch(error => {
+            const cached = exposureLayers.current.get(cacheKey);
+            if (cached?.layer === layer) {
+              exposureLayers.current.delete(cacheKey);
+              atlas.removeImageLayer(layerName);
+              URL.revokeObjectURL(blobUrl);
+            }
+            if (!cancelled && science.current?.metadata.id === metadata.id) {
+              science.current = null;
+              setSampleState({ loading: false, loaded: false, error: error.message });
+              callbacks.current.onExposureReady?.(false);
+            }
+          });
+        while (exposureLayers.current.size > MAX_CACHED_EXPOSURES) {
+          const oldestKey = exposureLayers.current.keys().next().value;
+          const oldest = exposureLayers.current.get(oldestKey);
+          exposureLayers.current.delete(oldestKey);
+          atlas.removeImageLayer(oldest.layerName);
+          URL.revokeObjectURL(oldest.blobUrl);
+        }
         clearTimeout(timer);
         atlas.gotoRaDec(latest.current.ra, latest.current.dec);
         atlas.setFoV(latest.current.fov);
-        science.current = { image, metadata, view: rendered };
-        setSampleState({ loading: false, error: '', loaded: true });
+        science.current = { image, metadata, view: initialView };
+        setSampleState({ loading: false, error: '', loaded: true, cached: false });
         callbacks.current.onExposureReady?.(true, metadata);
       })().catch(error => {
         clearTimeout(timer);
@@ -314,7 +415,7 @@ function SkyViewerInstance({
         clearTimeout(timer);
         renderWorker?.terminate();
         science.current = null;
-        if (blobUrl) URL.revokeObjectURL(blobUrl);
+        if (blobUrl && !layerCommitted) URL.revokeObjectURL(blobUrl);
       };
     }
     if (isSpherex) {
@@ -571,33 +672,62 @@ function SkyViewerInstance({
     if (!ready || !viewer.current) return;
     const atlas = viewer.current;
     let cancelled = false;
-    let catalog;
+    const catalogs = [];
     loadAladin().then(A => {
       if (cancelled) return;
-      catalog = A.catalog({
-        name: 'Candidate markers',
-        sourceSize: 18,
-        color: '#c4b5fd',
-        shape: 'cross',
-        onClick: 'showTable',
-      });
-      atlas.addCatalog(catalog);
-      catalog.addSources(
-        [marker, reporterMarker]
-          .filter(Boolean)
-          .map((m, i) =>
-            A.source(m.ra, m.dec, { label: i ? 'Reporter marker' : 'Marked position' })
+      const groups = [
+        {
+          name: 'Current image marker',
+          color: '#c4b5fd',
+          size: 20,
+          rows: markers.filter(item => item.isActive),
+          label: item => `Current image · ${item.obsId}`,
+        },
+        {
+          name: 'Other image markers',
+          color: '#67e8f9',
+          size: 16,
+          rows: markers.filter(item => !item.isActive),
+          label: item => `Image ${item.timelineIndex} · ${item.obsId}`,
+        },
+        {
+          name: 'Reporter markers',
+          color: '#fbbf24',
+          size: 15,
+          rows: reporterMarkers,
+          label: item => `Reporter · image ${item.timelineIndex} · ${item.obsId}`,
+        },
+      ];
+      for (const group of groups) {
+        if (!group.rows.length) continue;
+        const catalog = A.catalog({
+          name: group.name,
+          sourceSize: group.size,
+          color: group.color,
+          shape: 'cross',
+          onClick: 'showTable',
+        });
+        atlas.addCatalog(catalog);
+        catalog.addSources(
+          group.rows.map(item =>
+            A.source(item.ra, item.dec, {
+              label: group.label(item),
+              observation: item.obsId,
+              observedAt: item.observedAt,
+            })
           )
-      );
+        );
+        catalogs.push(catalog);
+      }
     });
     return () => {
       cancelled = true;
-      if (catalog) {
+      for (const catalog of catalogs) {
         catalog.removeAll();
         atlas.removeLayer(catalog);
       }
     };
-  }, [ready, marker, reporterMarker]);
+  }, [ready, markers, reporterMarkers]);
 
   const visibleState = comparisonActive ? comparisonDisplay : sampleState;
 

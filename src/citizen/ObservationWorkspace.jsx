@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SkyViewer from '../components/SkyViewer';
 import Timeline from '../components/Timeline';
 import ComparisonPanel from '../components/ComparisonPanel';
@@ -35,6 +35,27 @@ export default function ObservationWorkspace({
   });
   const [comparisonStatus, setComparisonStatus] = useState({ message: '', error: '', stats: null });
   const current = active ? frames[index] : null;
+  const visibleMarkers = useMemo(
+    () =>
+      frames.flatMap((frame, frameIndex) => {
+        const mark = marks[frame.id];
+        return mark
+          ? [{ ...mark, timelineIndex: frameIndex + 1, isActive: frame.id === current?.id }]
+          : [];
+      }),
+    [frames, marks, current?.id]
+  );
+  const reporterMarkers = useMemo(
+    () =>
+      revealReporter
+        ? initialFrames.flatMap((frame, frameIndex) =>
+            Number.isFinite(frame.ra) && Number.isFinite(frame.dec)
+              ? [{ ...frame, timelineIndex: frameIndex + 1 }]
+              : []
+          )
+        : [],
+    [initialFrames, revealReporter]
+  );
   const comparisonView = {
     ...comparison,
     a: frames.find(frame => frame.id === comparison.aId),
@@ -251,6 +272,13 @@ export default function ObservationWorkspace({
             Marked RA {marks[current.id].ra.toFixed(6)}° · Dec {marks[current.id].dec.toFixed(6)}°
           </p>
         )}
+        {visibleMarkers.length > 0 && (
+          <p className="text-xs leading-relaxed text-[#9a9aa3]">
+            <span className="text-violet-300">Violet</span> marks belong to this image.{' '}
+            <span className="text-cyan-300">Cyan</span> marks come from other timeline images and
+            stay at the same sky coordinates while you switch frames.
+          </p>
+        )}
       </section>
       <div data-tour="compare">
         <ComparisonPanel
@@ -267,8 +295,8 @@ export default function ObservationWorkspace({
       <SkyViewer
         position={investigation && current?.view ? current.view : position}
         exposure={current}
-        marker={marks[current?.id]}
-        reporterMarker={revealReporter ? initialFrames.find(f => f.id === current?.id) : null}
+        markers={visibleMarkers}
+        reporterMarkers={reporterMarkers}
         markMode={markMode}
         comparison={comparisonView}
         onComparisonState={setComparisonStatus}

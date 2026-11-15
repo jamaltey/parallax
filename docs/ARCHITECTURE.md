@@ -19,6 +19,8 @@ Browser
 
 `ObservationWorkspace` owns up to 12 selected frames, playback state, the active frame, and one marker per frame. Submitted reports persist only marked frames. A saved investigation reuses the same `SkyViewer` path and original IRSA source URLs; it never searches for newer replacements.
 
+Opened original observations use a six-entry browser LRU cache. Each entry retains the validated original FITS buffer, parsed science image and checksum metadata, plus the display-only TAN reprojection after it is first prepared. `SkyViewer` also keeps up to six ready Aladin image layers and changes their opacity when the timeline switches frames. This makes recent timeline frames immediate without weakening provenance checks or repeatedly running the display worker. Eviction revokes the corresponding Blob URL and removes the Aladin layer; older frames can still be reconstructed from the browser data cache or fetched again after that cache is evicted.
+
 ## Node API contracts
 
 ### `GET /api/spherex-exposures`
@@ -40,7 +42,7 @@ The upstream timeout is 60 seconds. No reprojection, resampling, subtraction, ph
 
 ## Browser comparison pipeline
 
-`ComparisonPanel` selects reference A and comparison B from the existing observation workspace. `loadSpherexExposure()` retrieves both through the same validated Node image route, verifies observation/detector identity and any saved SHA-256, then transfers those dedicated comparison buffers to `compareFits.worker.js`. Existing provenance buffers are never transferred or detached.
+`ComparisonPanel` selects reference A and comparison B from the existing observation workspace. `loadSpherexExposure()` retrieves both through the same validated Node image route or browser cache and verifies observation/detector identity and any saved SHA-256. The comparison path transfers copies to `compareFits.worker.js`; cached provenance buffers are never transferred or detached.
 
 `wcs.js` is the single TAN/TAN-SIP transform used by original-footprint validation and comparison. The common output grid is image A's width, height, tangent point, reference pixel, and CD matrix with SIP removed. For every common-grid pixel the worker:
 
