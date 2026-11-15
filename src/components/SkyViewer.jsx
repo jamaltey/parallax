@@ -14,6 +14,7 @@ import { prepareExposureDisplay } from '../lib/prepareExposure';
 import { isCurrentComparisonJob, overlayOpacities } from '../lib/comparison';
 import { exposureCacheKey, MAX_CACHED_EXPOSURES } from '../lib/exposureCache';
 import { identifyObject } from '../api/objects';
+import { atlasAim, atlasClick, atlasHover } from '../lib/atlasSound';
 export default function SkyViewer({
   position,
   exposure = null,
@@ -129,8 +130,13 @@ function SkyViewerInstance({
           showSimbadPointerControl: false,
           showContextMenu: false,
         });
+        viewer.current.on('objectHovered', (source, point) =>
+          atlasHover(document.getElementById(id), source, point)
+        );
+        atlasAim(viewer.current);
         viewer.current.on('click', event => {
           if (event.isDragging) return;
+          atlasClick(document.getElementById(id), event.x, event.y);
           const atlas = viewer.current;
           const point = atlas.pix2world(event.x, event.y, 'icrs');
           if (identifyModeRef.current) {
