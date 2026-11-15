@@ -1,6 +1,6 @@
 # Architecture and deployment
 
-[Back to Parallax](../README.md) · [Data sources](DATA_SOURCES.md) · [Citizen science](CITIZEN_SCIENCE.md)
+[Back to Parallax](../README.md) · [Data sources](DATA_SOURCES.md) · [Citizen science](CITIZEN_SCIENCE.md) · [Public API](API.md)
 
 ## Supported production architecture
 
@@ -12,10 +12,11 @@ Browser
   ├─ browser FITS display + comparison Web Workers
   ├─ /api/spherex-exposures ─┐
   ├─ /api/spherex-image ─────┴─ Node.js on Render ── Caltech/IPAC IRSA
+  ├─ /api/v1/* ───────────────── Node.js on Render ── Supabase public role + RLS
   └─ Supabase client ─────────── Supabase Auth/PostgreSQL
 ```
 
-`src/main.jsx` selects the landing/explorer, `/community`, or `/community/:id` view from the pathname. `server/index.js` serves the built files and maps both community route shapes back to `index.html`. Hashed JavaScript, public FITS samples, Aladin's bundled engine/WASM, and the emitted Web Worker are served as ordinary static assets.
+`src/main.jsx` selects the landing/explorer, `/community`, `/community/:id`, or `/developers` view from the pathname. `server/index.js` serves the built files and maps those SPA route shapes back to `index.html`. Hashed JavaScript, public FITS samples, Aladin's bundled engine/WASM, and the emitted Web Worker are served as ordinary static assets.
 
 `ObservationWorkspace` owns up to 12 selected frames, playback state, the active frame, and one marker per frame. Submitted reports persist only marked frames. A saved investigation reuses the same `SkyViewer` path and original IRSA source URLs; it never searches for newer replacements.
 
@@ -44,6 +45,12 @@ The upstream timeout is 60 seconds. No reprojection, resampling, subtraction, ph
 
 `server/objects.js` accepts validated ICRS `ra`, `dec`, and a cone `radius` no larger than 0.1°. It sends a fixed ADQL nearest-object query to the official CfA Harvard SIMBAD TAP mirror and falls back to the IDIA South Africa mirror after a timeout or service failure. It is not an arbitrary TAP proxy. A successful empty result returns a distinct 404 response; mirror outages return 502. Results are informational catalog matches and are never written into candidate provenance.
 
+### Public citizen-science API
+
+`server/public-api.js` implements `GET /api/v1/candidates`, `GET /api/v1/candidates/:id`, and `GET /api/v1/stats` without adding a framework. Vite mounts the same handler for development/preview, so there is only one implementation. It uses the existing Supabase URL and publishable key, explicit public projections, a field-by-field nested observation serializer, a 10-second query timeout, a 60-request/minute bounded in-memory limiter, and a 30-second statistics cache. Unknown v1 routes stay JSON and never fall through to the SPA.
+
+Candidate lists use bounded pagination and UUID as a final stable ordering key. Coordinate-radius filtering is omitted because the schema lacks a scientifically correct spherical query. See [API reference](API.md) for the exact contract, error behavior, privacy boundary, and operational limitations.
+
 ## Browser comparison pipeline
 
 `ComparisonPanel` selects reference A and comparison B from the existing observation workspace. `loadSpherexExposure()` retrieves both through the same validated Node image route or browser cache and verifies observation/detector identity and any saved SHA-256. The comparison path transfers copies to `compareFits.worker.js`; cached provenance buffers are never transferred or detached.
@@ -69,7 +76,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Vite mounts the two production route handlers in development and preview. Production-equivalent commands are:
+Vite mounts the production route handlers, including the public API, in development and preview. Production-equivalent commands are:
 
 ```sh
 npm test
@@ -103,7 +110,7 @@ Deployment steps:
 2. In Render, choose **New → Blueprint**, connect the repository, and select the branch containing `render.yaml`; alternatively create one Node Web Service with the same commands.
 3. Enter the two Supabase values when prompted. Do not add a service-role or secret key.
 4. Keep the repository root as the service root. Render supplies `PORT`; do not hardcode it.
-5. Deploy and verify `/`, `/community`, a real `/community/:id`, both `/api` routes, and the browser workflow.
+5. Deploy and verify `/`, `/community`, a real `/community/:id`, `/developers`, the three `/api/v1` endpoints, existing scientific routes, and the browser workflow.
 
 No Render deployment has been performed from this repository cleanup. The service must remain continuously available while users load original FITS files; a plan that sleeps or has insufficient memory can degrade timelines and discard the in-memory cache.
 
@@ -120,11 +127,13 @@ src/
   lib/loadExposure.js       browser retrieval, identity and checksum validation
   lib/supabase.js           client and anonymous authentication
   components/               sky viewer, archive, timeline, tutorial and landing UI
+  components/Developers.jsx public API documentation and same-origin explorer
   citizen/                  report, community, review, validation and persistence code
 server/
   index.js                  static production server and SPA routing
   spherex.js                fixed IRSA archive-search route
   exposure.js               fixed IRSA FITS extraction route and three-image cache
+  public-api.js              read-only candidate/statistics API and public serializer
 supabase/migrations/        citizen-science schema, validation, RLS and summary view
 tests/                      Node tests, captured fixtures and local PGlite policy tests
 public/samples/             labeled non-SPHEREx tutorial FITS files and provenance
@@ -137,7 +146,7 @@ render.yaml                 single-service Render Blueprint
 
 The Node routes are public because exploration does not require registration. Security relies on fixed upstreams, strict parameters and URL allowlists, redirect rejection, timeouts, bounded reads, and non-detailed error responses. CORS is not needed for same-origin production traffic and is not an abuse-control mechanism.
 
-There is no application-level rate limiter. Public users can consume Render bandwidth, memory, and IRSA capacity. The three-image cache is process-local, is cleared by restart or scale-out, and is not shared between instances. Add platform monitoring and rate controls before high traffic; do not weaken Supabase RLS to solve API availability.
+The `/api/v1` read API has a bounded single-process rate limiter. The large IRSA search/FITS routes do not share that limiter, so public users can still consume Render bandwidth, memory, and IRSA capacity. The limiter and three-image cache are process-local, reset on restart or scale-out, and are not shared between instances. Add platform monitoring and platform-level controls before high traffic; do not weaken Supabase RLS to solve API availability.
 
 ## Serverless experiment and production decision
 

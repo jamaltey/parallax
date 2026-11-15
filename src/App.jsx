@@ -38,6 +38,7 @@ export default function App() {
           <a href="#perspective">Parallax</a>
           <a href="#mission">Mission</a>
           <a href="/community">Community</a>
+          <a href="/developers">API</a>
         </div>
         <div className="nav-actions mobile:gap-3.75 flex items-center gap-5.5">
           <a className="tablet:inline hidden text-xs text-violet-200" href="/community">
@@ -135,6 +136,12 @@ export default function App() {
           <br />
           Imagery: NASA/SPHEREx · Caltech/IPAC · Astropy / DSS / 2MASS · Viewer: CDS Aladin Lite.
         </p>
+        <a
+          href="/developers"
+          className="text-link inline-flex items-center gap-2 text-[0.75rem] text-[#c1b1e5]"
+        >
+          Public API ↗
+        </a>
         <a
           href="#top"
           className="text-link mt-7 inline-flex items-center gap-6 text-[0.75rem] text-[#c1b1e5] [&:hover]:text-(--accent)"

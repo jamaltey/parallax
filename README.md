@@ -4,7 +4,7 @@
 
 Parallax is an interactive astronomical exploration and citizen-science platform built by **team Delta Cephei** for the **NASA International Space Apps Challenge 2026 — “Planet X and SPHEREx.”** It makes real infrared observations approachable: explore the sky, compare original observations, mark an interesting change, and invite the community to investigate it.
 
-**Live demo:** _add Render URL after deployment_ · [Official challenge](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [Technical architecture](docs/ARCHITECTURE.md)
+**Live demo:** [parallax.dcephei.earth](https://parallax.dcephei.earth) · [Official challenge](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [Technical architecture](docs/ARCHITECTURE.md)
 
 <!-- Screenshot placeholder: replace with a current Parallax explorer/community image before judging. -->
 
@@ -26,6 +26,7 @@ Every real candidate retains the original IRSA observation IDs, timestamps, dete
 | Image comparison      | WCS-aligned opacity overlay, A/B blink, raw B − A subtraction, normalized visual residuals, overlap masks, and diverging display   |
 | Catalog context       | Click-to-identify nearest SIMBAD object through official Harvard and IDIA mirrors, with explicit no-match and outage states        |
 | Citizen science       | Per-frame celestial markers, candidate reports, anonymous Supabase authentication, saved investigations, and community reviews     |
+| Public API            | Versioned, read-only candidate, provenance, and community-statistics endpoints with a browser-based developer explorer             |
 | Scientific safeguards | Original source identity and checksum validation, self-review/duplicate-review prevention, RLS, and explicit candidate disclaimers |
 
 Community agreement is a public assessment, **not scientific confirmation or the probability that an object is Planet X**.
@@ -65,7 +66,21 @@ Parallax is supported as one **Render Node.js Web Service**:
 - Supabase provides only anonymous Auth and PostgreSQL persistence/RLS for citizen science.
 - Browser Web Workers prepare display-only TAN/SIP reprojections and two-image comparisons without changing stored scientific pixels.
 
-The repository includes [render.yaml](render.yaml). Use `npm ci && npm run build` as the build command and `npm start` as the start command. Add the two Supabase variables above in Render. No production deployment URL is claimed yet.
+The repository includes [render.yaml](render.yaml). Use `npm ci && npm run build` as the build command and `npm start` as the start command. Add the two Supabase variables above in Render.
+
+## Public API
+
+The read-only API exposes community reports—not a replacement for NASA's archive APIs:
+
+```text
+GET https://parallax.dcephei.earth/api/v1/candidates?limit=10&min_reviews=2
+GET https://parallax.dcephei.earth/api/v1/candidates/CANDIDATE_UUID
+GET https://parallax.dcephei.earth/api/v1/stats
+```
+
+No API key or account is required. See the in-app [`/developers`](https://parallax.dcephei.earth/developers) explorer and [complete API reference](docs/API.md). These endpoints become available on the production domain after this revision is deployed.
+
+Parallax reports are community-generated, unverified candidates. Community agreement is not scientific confirmation, and no community-submission data license has yet been established.
 
 ## Data and scientific limits
 
@@ -78,6 +93,7 @@ The mosaic combines observation times, colors represent infrared brightness rath
 - [Architecture](docs/ARCHITECTURE.md) — runtime design, Node endpoints, Render deployment, tests, and the serverless benchmark decision.
 - [Data sources](docs/DATA_SOURCES.md) — archive contracts, provenance, FITS processing, rendering, and scientific limitations.
 - [Citizen science](docs/CITIZEN_SCIENCE.md) — Auth/database setup, report/review contract, RLS, and verification checklist.
+- [Public API](docs/API.md) — endpoints, response fields, security, limits, examples, and scientific interpretation.
 
 ## Team and roadmap
 

@@ -1,6 +1,6 @@
 # Citizen science: Explore → Mark → Submit → Review
 
-[Back to Parallax](../README.md) · [Architecture](ARCHITECTURE.md) · [Data sources](DATA_SOURCES.md)
+[Back to Parallax](../README.md) · [Architecture](ARCHITECTURE.md) · [Data sources](DATA_SOURCES.md) · [Public API](API.md)
 
 The **Spot something interesting?** panel reuses the existing Aladin viewer. Search IRSA, then choose **Open image** on an archive result. Use **Back to sky map / find images** to add further frames without losing markers. Select a frame, wait for it to load, click **Mark Object**, then click the object. Reposition by marking again, or remove the marker. Opened observations are cached in the browser for faster switching and timeline playback. Every personal marker is shown on every frame at its celestial RA/Dec: violet identifies the active frame's marker and cyan identifies markers made on other timeline frames. Each coordinate remains associated with its original observation for submission. Up to 12 original exposures can be included in a report. **Report candidate** opens the submission form. Motion reports require at least two distinct original observations at different UTC times.
 
@@ -16,6 +16,8 @@ With two or more timeline images, **Compare** selects reference A and comparison
 4. Run `npm run dev`, or build then use `npm start`. The explorer always calls the same-origin Node routes; Supabase configuration affects only Auth and citizen-science database calls. Saved candidates retain original IRSA URLs rather than deployment-specific proxy URLs.
 
 The migration grants public reads for the community's candidates and classifications; authenticated anonymous contributors may insert under their own UID. Clients have no UPDATE/DELETE grants, cannot set status or creation time, cannot review their own candidates, and cannot overwrite an earlier assessment. The `candidate_summary` view uses `security_invoker` and excludes unsure votes from agreement. With no definitive reviews it returns NULL, displayed as **Awaiting review**. Client-side hiding reduces incidental bias but is not a private/blinded research protocol: the community records are public.
+
+`/api/v1` provides a separate read-only, explicitly serialized public contract for reuse. It exposes candidate science metadata, original observation provenance, and aggregate review counts without contributor/reviewer UUIDs. This API filtering does not alter the underlying public SELECT policies: the current tables and `candidate_summary` view still expose author/reviewer UUID columns to a direct Data API client. Treat anonymous UUIDs as pseudonymous identifiers, not verified people. A future privacy-hardening migration should replace direct table exposure with reviewed public views/RPCs; that schema change is outside this additive API implementation.
 
 ### Image identity
 

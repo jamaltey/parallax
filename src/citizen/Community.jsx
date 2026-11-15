@@ -41,6 +41,7 @@ export default function Community({ candidateId }) {
           <a href="/community" aria-current={!candidateId ? 'page' : undefined}>
             Community
           </a>
+          <a href="/developers">API</a>
         </nav>
       </header>
       <main className="relative z-1 mx-auto max-w-7xl space-y-6 px-5 py-10 sm:px-10">
@@ -59,6 +60,10 @@ export default function Community({ candidateId }) {
       </main>
       <footer className="relative z-1 mx-auto max-w-7xl border-t border-white/10 px-5 py-8 text-xs text-[#9a9aa3]">
         Parallax · Team Delta Cephei · NASA Space Apps concept. No NASA affiliation or endorsement.
+        ·{' '}
+        <a className="text-violet-300" href="/developers">
+          Public API
+        </a>
       </footer>
     </>
   );
