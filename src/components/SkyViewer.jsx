@@ -58,6 +58,17 @@ export default function SkyViewer({
   );
 }
 
+function currentAtlasView(atlas) {
+  const center = atlas.getRaDec();
+  const fov = atlas.getFov();
+  return { ra: center[0], dec: center[1], fov: fov[0] };
+}
+
+function restoreAtlasView(atlas, view) {
+  atlas.gotoRaDec(view.ra, view.dec);
+  atlas.setFoV(view.fov);
+}
+
 function SkyViewerInstance({
   position,
   sampleId,
@@ -322,10 +333,12 @@ function SkyViewerInstance({
         cachedLayer &&
         (!exposure.imageHash || exposure.imageHash === cachedLayer.metadata.imageHash)
       ) {
+        const retainedView = currentAtlasView(atlas);
         exposureLayers.current.delete(cacheKey);
         exposureLayers.current.set(cacheKey, cachedLayer);
         hideExposureLayers(cacheKey);
         cachedLayer.layer.setOpacity(1);
+        restoreAtlasView(atlas, retainedView);
         const metadata = {
           ...cachedLayer.metadata,
           ...exposure,
@@ -375,6 +388,10 @@ function SkyViewerInstance({
           dec: image.header.CRVAL2,
           fov: Math.max(image.header.NAXIS1, image.header.NAXIS2) * pixelScale,
         };
+        // Aladin automatically frames a newly displayed FITS layer. Timeline
+        // navigation should only replace the image, so retain the user's live
+        // camera and restore it both immediately and after rendering finishes.
+        const retainedView = currentAtlasView(atlas);
         let finishRender;
         let failRender;
         const renderCompletion = new Promise((resolve, reject) => {
@@ -385,7 +402,10 @@ function SkyViewerInstance({
           layer = atlas.displayFITS(
             blobUrl,
             { name: `SPHEREx ${exposure.obsId} ${exposure.band}`, imgFormat: 'fits', ...display },
-            (ra, dec, fov) => finishRender({ ra, dec, fov }),
+            (ra, dec, fov) => {
+              if (!cancelled) restoreAtlasView(atlas, retainedView);
+              finishRender({ ra, dec, fov });
+            },
             () => failRender(new Error('Could not render the original FITS exposure.')),
             layerName
           );
@@ -395,6 +415,7 @@ function SkyViewerInstance({
           renderCompletion.catch(() => {});
           throw error;
         }
+        restoreAtlasView(atlas, retainedView);
         if (cancelled || controller.signal.aborted) {
           atlas.removeImageLayer(layerName);
           return;
@@ -439,8 +460,7 @@ function SkyViewerInstance({
           URL.revokeObjectURL(oldest.blobUrl);
         }
         clearTimeout(timer);
-        atlas.gotoRaDec(latest.current.ra, latest.current.dec);
-        atlas.setFoV(latest.current.fov);
+        restoreAtlasView(atlas, retainedView);
         science.current = { image, metadata, view: initialView };
         setSampleState({ loading: false, error: '', loaded: true, cached: false });
         callbacks.current.onExposureReady?.(true, metadata);

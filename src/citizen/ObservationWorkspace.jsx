@@ -372,7 +372,7 @@ export default function ObservationWorkspace({
         ? comparisonHost && createPortal(comparisonPanel, comparisonHost)
         : comparisonPanel}
       <SkyViewer
-        position={investigation && current?.view ? current.view : position}
+        position={position}
         exposure={current}
         prefetchExposures={nearbyFrames}
         markers={visibleMarkers}
