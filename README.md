@@ -24,6 +24,7 @@ Every real candidate retains the original IRSA observation IDs, timestamps, dete
 | Infrared exploration  | 102-channel mosaic metadata, 100 selectable non-blank wavelength layers, RA/Dec navigation, and FOV control                        |
 | Original observations | Strictly validated Level 2 FITS retrieval, timeline playback, browser Web Worker display reprojection, and provenance checks       |
 | Image comparison      | WCS-aligned opacity overlay, A/B blink, raw B − A subtraction, normalized visual residuals, overlap masks, and diverging display   |
+| Catalog context       | Click-to-identify nearest SIMBAD object through official Harvard and IDIA mirrors, with explicit no-match and outage states        |
 | Citizen science       | Per-frame celestial markers, candidate reports, anonymous Supabase authentication, saved investigations, and community reviews     |
 | Scientific safeguards | Original source identity and checksum validation, self-review/duplicate-review prevention, RLS, and explicit candidate disclaimers |
 
@@ -60,7 +61,7 @@ Never put a secret or service-role key in `VITE_*` variables. See [Citizen scien
 Parallax is supported as one **Render Node.js Web Service**:
 
 - React 19, Vite 7, Tailwind CSS 4, and Aladin Lite 3.8.2 in the browser.
-- Node.js serves `dist`, SPA routes, IRSA archive searches, and bounded FITS extraction.
+- Node.js serves `dist`, SPA routes, IRSA archive searches, bounded FITS extraction, and fixed-endpoint SIMBAD mirror lookup.
 - Supabase provides only anonymous Auth and PostgreSQL persistence/RLS for citizen science.
 - Browser Web Workers prepare display-only TAN/SIP reprojections and two-image comparisons without changing stored scientific pixels.
 

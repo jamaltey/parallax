@@ -40,6 +40,10 @@ Opened original observations use a six-entry browser LRU cache. Each entry retai
 
 The upstream timeout is 60 seconds. No reprojection, resampling, subtraction, photometry, or calibration occurs on the server. Display-only SIP correction runs later in a browser worker; candidate identity and checksums use the unmodified extracted bytes.
 
+### `GET /api/object-lookup`
+
+`server/objects.js` accepts validated ICRS `ra`, `dec`, and a cone `radius` no larger than 0.1°. It sends a fixed ADQL nearest-object query to the official CfA Harvard SIMBAD TAP mirror and falls back to the IDIA South Africa mirror after a timeout or service failure. It is not an arbitrary TAP proxy. A successful empty result returns a distinct 404 response; mirror outages return 502. Results are informational catalog matches and are never written into candidate provenance.
+
 ## Browser comparison pipeline
 
 `ComparisonPanel` selects reference A and comparison B from the existing observation workspace. `loadSpherexExposure()` retrieves both through the same validated Node image route or browser cache and verifies observation/detector identity and any saved SHA-256. The comparison path transfers copies to `compareFits.worker.js`; cached provenance buffers are never transferred or detached.

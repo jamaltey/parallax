@@ -15,6 +15,7 @@ import {
 } from '../lib/loadExposure';
 import { isCurrentComparisonJob, overlayOpacities } from '../lib/comparison';
 import { exposureCacheKey, MAX_CACHED_EXPOSURES } from '../lib/exposureCache';
+import { identifyObject } from '../api/objects';
 export default function SkyViewer({
   position,
   exposure = null,
@@ -75,6 +76,11 @@ function SkyViewerInstance({
   const callbacks = useRef({ onMark, onExposureReady, onComparisonState, markMode });
   callbacks.current = { onMark, onExposureReady, onComparisonState, markMode };
   const [markError, setMarkError] = useState('');
+  const [identifyMode, setIdentifyMode] = useState(false);
+  const identifyModeRef = useRef(false);
+  identifyModeRef.current = identifyMode;
+  const lookupAbort = useRef(null);
+  const [lookupState, setLookupState] = useState({ loading: false, error: '', result: null });
   const latest = useRef(position);
   latest.current = position;
   const [status, setStatus] = useState('Loading Aladin Lite…');
@@ -110,11 +116,41 @@ function SkyViewerInstance({
           fov: p.fov,
           cooFrame: 'ICRSd',
           showReticle: true,
+          showSimbadPointerControl: false,
+          showContextMenu: false,
         });
         viewer.current.on('click', event => {
-          if (!callbacks.current.markMode || event.isDragging || !science.current) return;
+          if (event.isDragging) return;
           const atlas = viewer.current;
           const point = atlas.pix2world(event.x, event.y, 'icrs');
+          if (identifyModeRef.current) {
+            if (!point) {
+              setLookupState({
+                loading: false,
+                error: 'Could not read this sky position.',
+                result: null,
+              });
+              return;
+            }
+            const [ra, dec] = point;
+            const radius = Math.min(2 / 60, Math.max(2 / 3600, atlas.getFov()[0] / 60));
+            lookupAbort.current?.abort();
+            const controller = new AbortController();
+            lookupAbort.current = controller;
+            setIdentifyMode(false);
+            setLookupState({ loading: true, error: '', result: null });
+            identifyObject({ ra, dec, radius, signal: controller.signal })
+              .then(result => {
+                if (!controller.signal.aborted)
+                  setLookupState({ loading: false, error: '', result });
+              })
+              .catch(error => {
+                if (!controller.signal.aborted)
+                  setLookupState({ loading: false, error: error.message, result: null });
+              });
+            return;
+          }
+          if (!callbacks.current.markMode || !science.current) return;
           if (!point || !science.current.image.contains(point[0], point[1])) {
             setMarkError('Choose a point inside the loaded exposure’s valid image pixels.');
             return;
@@ -133,9 +169,14 @@ function SkyViewerInstance({
       });
     return () => {
       cancelled = true;
+      lookupAbort.current?.abort();
       viewer.current = null;
     };
   }, [id]);
+
+  useEffect(() => {
+    if (markMode) setIdentifyMode(false);
+  }, [markMode]);
 
   useEffect(
     () => () => {
@@ -697,6 +738,13 @@ function SkyViewerInstance({
           rows: reporterMarkers,
           label: item => `Reporter · image ${item.timelineIndex} · ${item.obsId}`,
         },
+        {
+          name: 'SIMBAD lookup',
+          color: '#86efac',
+          size: 18,
+          rows: lookupState.result ? [lookupState.result] : [],
+          label: item => `${item.name} · ${item.objectType}`,
+        },
       ];
       for (const group of groups) {
         if (!group.rows.length) continue;
@@ -727,7 +775,7 @@ function SkyViewerInstance({
         atlas.removeLayer(catalog);
       }
     };
-  }, [ready, markers, reporterMarkers]);
+  }, [ready, markers, reporterMarkers, lookupState.result]);
 
   const visibleState = comparisonActive ? comparisonDisplay : sampleState;
 
@@ -869,6 +917,65 @@ function SkyViewerInstance({
               </a>
             </div>
           </>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            aria-pressed={identifyMode}
+            disabled={!ready || lookupState.loading}
+            onClick={() => {
+              setIdentifyMode(value => !value);
+              setLookupState(previous => ({ ...previous, error: '' }));
+            }}
+          >
+            {identifyMode ? 'Cancel identification' : 'Identify catalog object'}
+          </button>
+          {lookupState.result && (
+            <button onClick={() => setLookupState({ loading: false, error: '', result: null })}>
+              Clear identification
+            </button>
+          )}
+        </div>
+        {identifyMode && (
+          <p role="status" className="text-sm text-emerald-200">
+            Click a visible object to search the official Harvard and IDIA SIMBAD mirrors.
+          </p>
+        )}
+        {lookupState.loading && (
+          <p role="status" className="text-sm text-[#b8b8c2]">
+            Searching SIMBAD mirrors…
+          </p>
+        )}
+        {lookupState.error && (
+          <p role="alert" className="text-sm leading-relaxed text-rose-300">
+            {lookupState.error}
+          </p>
+        )}
+        {lookupState.result && (
+          <div className="rounded-lg border border-emerald-300/25 bg-emerald-300/5 p-3 text-sm">
+            <p className="font-semibold text-emerald-200">{lookupState.result.name}</p>
+            <p className="mt-1 text-xs leading-relaxed text-[#b8b8c2]">
+              {lookupState.result.objectType}
+              {lookupState.result.spectralType
+                ? ` · spectral type ${lookupState.result.spectralType}`
+                : ''}{' '}
+              · {lookupState.result.separationArcsec.toFixed(2)}″ from the clicked position
+              <br />
+              {lookupState.result.provider} · RA {lookupState.result.ra.toFixed(6)}° · Dec{' '}
+              {lookupState.result.dec.toFixed(6)}°
+            </p>
+            <a
+              className="mt-2 inline-block text-xs text-emerald-200 underline"
+              href={lookupState.result.objectUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open mirror record ↗
+            </a>
+            <p className="mt-2 text-xs leading-relaxed text-[#9a9aa3]">
+              This is the nearest SIMBAD catalog match, not automatic confirmation that it is the
+              same source visible in SPHEREx.
+            </p>
+          </div>
         )}
         <p
           role="status"
