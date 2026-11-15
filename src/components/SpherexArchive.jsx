@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
 
-export default function SpherexArchive({ position, onAddExposure }) {
+export default function SpherexArchive({ position, onAddExposure, standalone = false }) {
   const [collection, setCollection] = useState('spherex_dr1');
   const [state, setState] = useState({ rows: [], loading: false, error: '', searched: false });
   const request = useRef(null);
@@ -36,7 +36,13 @@ export default function SpherexArchive({ position, onAddExposure }) {
     }
   }
   return (
-    <div className="space-y-3 border-t border-white/10 pt-4">
+    <div
+      className={
+        standalone
+          ? 'panel mobile:p-4.5 space-y-3 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)]'
+          : 'space-y-3 border-t border-white/10 pt-4'
+      }
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">Ready to investigate?</h3>

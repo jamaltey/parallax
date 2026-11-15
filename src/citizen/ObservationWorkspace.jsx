@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import SkyViewer from '../components/SkyViewer';
 import Timeline from '../components/Timeline';
 import ComparisonPanel from '../components/ComparisonPanel';
@@ -11,6 +12,10 @@ export default function ObservationWorkspace({
   investigation = false,
   revealReporter = false,
   onInspected,
+  skyControlsHost,
+  skyControlsInSidebar = false,
+  comparisonHost,
+  comparisonInSidebar = false,
 }) {
   const [frames, setFrames] = useState(initialFrames);
   const [index, setIndex] = useState(0);
@@ -75,6 +80,21 @@ export default function ObservationWorkspace({
         : playing
           ? 'Pause the observation timeline to mark an object.'
           : '';
+  const comparisonPanel = (
+    <div data-tour="compare">
+      <ComparisonPanel
+        frames={frames}
+        value={comparison}
+        compact={comparisonInSidebar}
+        onChange={updater => {
+          setPlaying(false);
+          setMarkMode(false);
+          setComparison(updater);
+        }}
+        status={comparisonStatus}
+      />
+    </div>
+  );
   useEffect(() => {
     if (!playing || !ready || !active || frames.length < 2) return;
     const timer = setTimeout(() => {
@@ -280,18 +300,9 @@ export default function ObservationWorkspace({
           </p>
         )}
       </section>
-      <div data-tour="compare">
-        <ComparisonPanel
-          frames={frames}
-          value={comparison}
-          onChange={updater => {
-            setPlaying(false);
-            setMarkMode(false);
-            setComparison(updater);
-          }}
-          status={comparisonStatus}
-        />
-      </div>
+      {comparisonInSidebar
+        ? comparisonHost && createPortal(comparisonPanel, comparisonHost)
+        : comparisonPanel}
       <SkyViewer
         position={investigation && current?.view ? current.view : position}
         exposure={current}
@@ -306,6 +317,8 @@ export default function ObservationWorkspace({
         }}
         onAddExposure={investigation ? undefined : add}
         onExposureReady={loaded}
+        controlsHost={skyControlsHost}
+        controlsInSidebar={skyControlsInSidebar}
       />
       <div data-tour="timeline">
         {active ? (

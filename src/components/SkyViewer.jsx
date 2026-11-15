@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { loadAladin } from '../lib/aladin';
 import { SAMPLE_IMAGES, sampleImageUrl } from '../api/sampleImages';
 import {
@@ -27,6 +28,8 @@ export default function SkyViewer({
   markMode = false,
   comparison,
   onComparisonState,
+  controlsHost,
+  controlsInSidebar = false,
 }) {
   const [sampleId, setSampleId] = useState('spherex');
   const [attempt, setAttempt] = useState(0);
@@ -43,6 +46,8 @@ export default function SkyViewer({
       markMode={markMode}
       comparison={comparison}
       onComparisonState={onComparisonState}
+      controlsHost={controlsHost}
+      controlsInSidebar={controlsInSidebar}
       position={position}
       sampleId={sampleId}
       setSampleId={setSampleId}
@@ -65,6 +70,8 @@ function SkyViewerInstance({
   markMode,
   comparison,
   onComparisonState,
+  controlsHost,
+  controlsInSidebar,
 }) {
   const id = `sky-${useId().replace(/[^a-z0-9]/gi, '')}`;
   const viewer = useRef(null);
@@ -779,256 +786,260 @@ function SkyViewerInstance({
 
   const visibleState = comparisonActive ? comparisonDisplay : sampleState;
 
-  return (
-    <section className="space-y-3" aria-label="Sky viewer and FITS samples">
-      <div
-        className="panel mobile:p-4.5 space-y-3 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)] [&_h2]:mt-2 [&_h2]:font-[inherit] [&_h2]:text-[1.1rem] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em]"
-        data-tour="samples"
-      >
-        <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-          {comparisonActive
-            ? comparison.mode === 'overlay'
-              ? 'Aligned observation overlay'
-              : 'Difference image · B minus A'
-            : exposure
-              ? 'Investigate an image'
-              : isSpherex
-                ? 'Explore the infrared sky'
-                : 'Explore a reference image'}
-        </div>
-        {!exposure && (
-          <details className="text-sm">
-            <summary className="cursor-pointer text-[#b8b8c2]">Change sky map</summary>
-            <label className="mt-3 block">
-              Sky map
+  const controlsPanel = (
+    <div
+      className="panel mobile:p-4.5 space-y-3 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)] [&_h2]:mt-2 [&_h2]:font-[inherit] [&_h2]:text-[1.1rem] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em]"
+      data-tour="samples"
+    >
+      <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
+        {comparisonActive
+          ? comparison.mode === 'overlay'
+            ? 'Aligned observation overlay'
+            : 'Difference image · B minus A'
+          : exposure
+            ? 'Investigate an image'
+            : isSpherex
+              ? 'Explore the infrared sky'
+              : 'Explore a reference image'}
+      </div>
+      {!exposure && (
+        <details className="text-sm">
+          <summary className="cursor-pointer text-[#b8b8c2]">Change sky map</summary>
+          <label className="mt-3 block">
+            Sky map
+            <select
+              value={sampleId}
+              disabled={!ready}
+              onChange={event => setSampleId(event.target.value)}
+            >
+              <option value="spherex">SPHEREx · infrared sky map</option>
+              <option value="">Visible-light sky map · DSS2</option>
+              {SAMPLE_IMAGES.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </details>
+      )}
+      {exposure && !comparisonActive && (
+        <details className="text-xs text-[#9a9aa3]">
+          <summary className="cursor-pointer">Image details & original file</summary>
+          <p className="mt-3 leading-relaxed">
+            {exposure.obsId} · {exposure.band} · {exposure.observedAt} ·{' '}
+            {(exposure.wavelengthMin * 1e6).toFixed(3)}–{(exposure.wavelengthMax * 1e6).toFixed(3)}{' '}
+            µm (varies across the detector). Original IMAGE pixels resampled for display with
+            distortion correction; quality flags are not masked.{' '}
+            <a className="underline" href={exposure.url} target="_blank" rel="noreferrer">
+              Original FITS ↗
+            </a>
+          </p>
+        </details>
+      )}
+      {comparisonActive && (
+        <details className="text-xs text-[#9a9aa3]" open>
+          <summary className="cursor-pointer">Derived comparison details</summary>
+          <p className="mt-3 leading-relaxed">
+            A: {comparison.a.obsId} · {comparison.a.band} · {comparison.a.observedAt}
+            <br />
+            B: {comparison.b.obsId} · {comparison.b.band} · {comparison.b.observedAt}
+            <br />
+            Common grid: undistorted tangent plane of A. Only pixels with valid coverage in both
+            originals are shown. This derived view is not an original NASA observation and is not
+            submitted as one.
+          </p>
+        </details>
+      )}
+      {isSpherex && (
+        <>
+          <p className="text-xs leading-relaxed text-[#9a9aa3]">
+            See the sky in infrared light. Colors show brightness, not visible-light colors. Try a
+            different wavelength to reveal different details.
+          </p>
+          {cube && (
+            <label>
+              Infrared wavelength
               <select
-                value={sampleId}
-                disabled={!ready}
-                onChange={event => setSampleId(event.target.value)}
+                value={channel}
+                disabled={!sampleState.loaded}
+                onChange={event => setChannel(Number(event.target.value))}
               >
-                <option value="spherex">SPHEREx · infrared sky map</option>
-                <option value="">Visible-light sky map · DSS2</option>
-                {SAMPLE_IMAGES.map(item => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
+                {cube.channels.map(item => (
+                  <option key={item.index} value={item.index} disabled={item.blank}>
+                    {item.wavelength.toFixed(3)} µm
+                    {item.blank ? ' · unavailable' : ''}
                   </option>
                 ))}
               </select>
             </label>
-          </details>
-        )}
-        {exposure && !comparisonActive && (
+          )}
+          <p className="text-xs leading-relaxed text-[#9a9aa3]">
+            This map combines images from different times. To mark an object, find an individual
+            image below.
+          </p>
           <details className="text-xs text-[#9a9aa3]">
-            <summary className="cursor-pointer">Image details & original file</summary>
-            <p className="mt-3 leading-relaxed">
-              {exposure.obsId} · {exposure.band} · {exposure.observedAt} ·{' '}
-              {(exposure.wavelengthMin * 1e6).toFixed(3)}–
-              {(exposure.wavelengthMax * 1e6).toFixed(3)} µm (varies across the detector). Original
-              IMAGE pixels resampled for display with distortion correction; quality flags are not
-              masked.{' '}
-              <a className="underline" href={exposure.url} target="_blank" rel="noreferrer">
-                Original FITS ↗
-              </a>
-            </p>
-          </details>
-        )}
-        {comparisonActive && (
-          <details className="text-xs text-[#9a9aa3]" open>
-            <summary className="cursor-pointer">Derived comparison details</summary>
-            <p className="mt-3 leading-relaxed">
-              A: {comparison.a.obsId} · {comparison.a.band} · {comparison.a.observedAt}
-              <br />
-              B: {comparison.b.obsId} · {comparison.b.band} · {comparison.b.observedAt}
-              <br />
-              Common grid: undistorted tangent plane of A. Only pixels with valid coverage in both
-              originals are shown. This derived view is not an original NASA observation and is not
-              submitted as one.
-            </p>
-          </details>
-        )}
-        {isSpherex && (
-          <>
-            <p className="text-xs leading-relaxed text-[#9a9aa3]">
-              See the sky in infrared light. Colors show brightness, not visible-light colors. Try a
-              different wavelength to reveal different details.
-            </p>
-            {cube && (
-              <label>
-                Infrared wavelength
-                <select
-                  value={channel}
-                  disabled={!sampleState.loaded}
-                  onChange={event => setChannel(Number(event.target.value))}
-                >
-                  {cube.channels.map(item => (
-                    <option key={item.index} value={item.index} disabled={item.blank}>
-                      {item.wavelength.toFixed(3)} µm
-                      {item.blank ? ' · unavailable' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <p className="text-xs leading-relaxed text-[#9a9aa3]">
-              This map combines images from different times. To mark an object, find an individual
-              image below.
-            </p>
-            <details className="text-xs text-[#9a9aa3]">
-              <summary className="cursor-pointer">About this map & data sources</summary>
-              <p className="my-3 leading-relaxed">
-                NASA/SPHEREx · Caltech/IPAC · DR1. The map has 102 infrared wavelength layers.
-                Wavelengths are measured in micrometers (µm). Two channels have no data. Gaps and
-                image artifacts may appear. This combined map cannot be used to compare observation
-                dates or make calibrated brightness measurements.
-              </p>
-              <div className="flex flex-wrap gap-3 text-xs">
-                <a
-                  className="underline"
-                  href={SPHEREX_CUBE_TUTORIAL}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Official mosaic tutorial ↗
-                </a>
-                <a
-                  className="underline"
-                  href={`${SPHEREX_HIPS}/properties`}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Technical metadata ↗
-                </a>
-              </div>
-            </details>
-          </>
-        )}
-        {!exposure && sample && (
-          <>
-            <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
-              {sample.provenance}. This is a reference image, not a SPHEREx observation. It cannot
-              be added to an investigation.
+            <summary className="cursor-pointer">About this map & data sources</summary>
+            <p className="my-3 leading-relaxed">
+              NASA/SPHEREx · Caltech/IPAC · DR1. The map has 102 infrared wavelength layers.
+              Wavelengths are measured in micrometers (µm). Two channels have no data. Gaps and
+              image artifacts may appear. This combined map cannot be used to compare observation
+              dates or make calibrated brightness measurements.
             </p>
             <div className="flex flex-wrap gap-3 text-xs">
-              <a className="underline" href={sampleImageUrl(sample)} download>
-                Download FITS
+              <a
+                className="underline"
+                href={SPHEREX_CUBE_TUTORIAL}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Official mosaic tutorial ↗
               </a>
-              <a className="underline" href={sample.source} target="_blank" rel="noreferrer">
-                Sample source ↗
+              <a
+                className="underline"
+                href={`${SPHEREX_HIPS}/properties`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Technical metadata ↗
               </a>
             </div>
-          </>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            aria-pressed={identifyMode}
-            disabled={!ready || lookupState.loading}
-            onClick={() => {
-              setIdentifyMode(value => !value);
-              setLookupState(previous => ({ ...previous, error: '' }));
-            }}
-          >
-            {identifyMode ? 'Cancel identification' : 'Identify catalog object'}
-          </button>
-          {lookupState.result && (
-            <button onClick={() => setLookupState({ loading: false, error: '', result: null })}>
-              Clear identification
-            </button>
-          )}
-        </div>
-        {identifyMode && (
-          <p role="status" className="text-sm text-emerald-200">
-            Click a visible object to search the official Harvard and IDIA SIMBAD mirrors.
+          </details>
+        </>
+      )}
+      {!exposure && sample && (
+        <>
+          <p className="muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]">
+            {sample.provenance}. This is a reference image, not a SPHEREx observation. It cannot be
+            added to an investigation.
           </p>
-        )}
-        {lookupState.loading && (
-          <p role="status" className="text-sm text-[#b8b8c2]">
-            Searching SIMBAD mirrors…
-          </p>
-        )}
-        {lookupState.error && (
-          <p role="alert" className="text-sm leading-relaxed text-rose-300">
-            {lookupState.error}
-          </p>
-        )}
-        {lookupState.result && (
-          <div className="rounded-lg border border-emerald-300/25 bg-emerald-300/5 p-3 text-sm">
-            <p className="font-semibold text-emerald-200">{lookupState.result.name}</p>
-            <p className="mt-1 text-xs leading-relaxed text-[#b8b8c2]">
-              {lookupState.result.objectType}
-              {lookupState.result.spectralType
-                ? ` · spectral type ${lookupState.result.spectralType}`
-                : ''}{' '}
-              · {lookupState.result.separationArcsec.toFixed(2)}″ from the clicked position
-              <br />
-              {lookupState.result.provider} · RA {lookupState.result.ra.toFixed(6)}° · Dec{' '}
-              {lookupState.result.dec.toFixed(6)}°
-            </p>
-            <a
-              className="mt-2 inline-block text-xs text-emerald-200 underline"
-              href={lookupState.result.objectUrl}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Open mirror record ↗
+          <div className="flex flex-wrap gap-3 text-xs">
+            <a className="underline" href={sampleImageUrl(sample)} download>
+              Download FITS
             </a>
-            <p className="mt-2 text-xs leading-relaxed text-[#9a9aa3]">
-              This is the nearest SIMBAD catalog match, not automatic confirmation that it is the
-              same source visible in SPHEREx.
-            </p>
+            <a className="underline" href={sample.source} target="_blank" rel="noreferrer">
+              Sample source ↗
+            </a>
           </div>
-        )}
-        <p
-          role="status"
-          className={
-            visibleState.error
-              ? 'error text-[0.85rem] text-[#fda4af]'
-              : 'muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]'
-          }
+        </>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          aria-pressed={identifyMode}
+          disabled={!ready || lookupState.loading}
+          onClick={() => {
+            setIdentifyMode(value => !value);
+            setLookupState(previous => ({ ...previous, error: '' }));
+          }}
         >
-          {visibleState.loading
-            ? comparisonActive
-              ? comparisonResult
-                ? 'Displaying the aligned comparison…'
-                : 'Loading and aligning two original observations…'
-              : exposure
-                ? 'Loading observation image…'
-                : isSpherex
-                  ? 'Loading sky map…'
-                  : 'Loading reference image…'
-            : visibleState.error ||
-              (visibleState.loaded
-                ? comparisonActive
-                  ? comparison.mode === 'overlay'
-                    ? 'Aligned overlay ready. Use opacity or blink to inspect changes.'
-                    : 'Difference ready. Blue is negative (brighter in A); red is positive (brighter in B).'
-                  : exposure
-                    ? 'Image ready. Use Mark Object to select a point in the image.'
-                    : isSpherex
-                      ? 'Sky map connected.'
-                      : 'Reference image ready.'
-                : 'Reference survey imagery requires internet access.')}
-        </p>
-        {visibleState.error && <button onClick={retry}>Retry image</button>}
-        {exposure && visibleState.loaded && (
-          <button
-            onClick={() => {
-              const view = comparisonActive ? comparisonView.current : science.current?.view;
-              if (view && viewer.current) {
-                viewer.current.gotoRaDec(view.ra, view.dec);
-                viewer.current.setFoV(view.fov * 1.1);
-              }
-            }}
-          >
-            Center image
+          {identifyMode ? 'Cancel identification' : 'Identify catalog object'}
+        </button>
+        {lookupState.result && (
+          <button onClick={() => setLookupState({ loading: false, error: '', result: null })}>
+            Clear identification
           </button>
-        )}
-        {!exposure && <SpherexArchive position={position} onAddExposure={onAddExposure} />}
-        {markError && (
-          <p role="alert" className="text-sm text-rose-300">
-            {markError}
-          </p>
         )}
       </div>
+      {identifyMode && (
+        <p role="status" className="text-sm text-emerald-200">
+          Click a visible object to search the official Harvard and IDIA SIMBAD mirrors.
+        </p>
+      )}
+      {lookupState.loading && (
+        <p role="status" className="text-sm text-[#b8b8c2]">
+          Searching SIMBAD mirrors…
+        </p>
+      )}
+      {lookupState.error && (
+        <p role="alert" className="text-sm leading-relaxed text-rose-300">
+          {lookupState.error}
+        </p>
+      )}
+      {lookupState.result && (
+        <div className="rounded-lg border border-emerald-300/25 bg-emerald-300/5 p-3 text-sm">
+          <p className="font-semibold text-emerald-200">{lookupState.result.name}</p>
+          <p className="mt-1 text-xs leading-relaxed text-[#b8b8c2]">
+            {lookupState.result.objectType}
+            {lookupState.result.spectralType
+              ? ` · spectral type ${lookupState.result.spectralType}`
+              : ''}{' '}
+            · {lookupState.result.separationArcsec.toFixed(2)}″ from the clicked position
+            <br />
+            {lookupState.result.provider} · RA {lookupState.result.ra.toFixed(6)}° · Dec{' '}
+            {lookupState.result.dec.toFixed(6)}°
+          </p>
+          <a
+            className="mt-2 inline-block text-xs text-emerald-200 underline"
+            href={lookupState.result.objectUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open mirror record ↗
+          </a>
+          <p className="mt-2 text-xs leading-relaxed text-[#9a9aa3]">
+            This is the nearest SIMBAD catalog match, not automatic confirmation that it is the same
+            source visible in SPHEREx.
+          </p>
+        </div>
+      )}
+      <p
+        role="status"
+        className={
+          visibleState.error
+            ? 'error text-[0.85rem] text-[#fda4af]'
+            : 'muted text-[0.75rem] leading-[1.75] text-[#9a9aa3]'
+        }
+      >
+        {visibleState.loading
+          ? comparisonActive
+            ? comparisonResult
+              ? 'Displaying the aligned comparison…'
+              : 'Loading and aligning two original observations…'
+            : exposure
+              ? 'Loading observation image…'
+              : isSpherex
+                ? 'Loading sky map…'
+                : 'Loading reference image…'
+          : visibleState.error ||
+            (visibleState.loaded
+              ? comparisonActive
+                ? comparison.mode === 'overlay'
+                  ? 'Aligned overlay ready. Use opacity or blink to inspect changes.'
+                  : 'Difference ready. Blue is negative (brighter in A); red is positive (brighter in B).'
+                : exposure
+                  ? 'Image ready. Use Mark Object to select a point in the image.'
+                  : isSpherex
+                    ? 'Sky map connected.'
+                    : 'Reference image ready.'
+              : 'Reference survey imagery requires internet access.')}
+      </p>
+      {visibleState.error && <button onClick={retry}>Retry image</button>}
+      {exposure && visibleState.loaded && (
+        <button
+          onClick={() => {
+            const view = comparisonActive ? comparisonView.current : science.current?.view;
+            if (view && viewer.current) {
+              viewer.current.gotoRaDec(view.ra, view.dec);
+              viewer.current.setFoV(view.fov * 1.1);
+            }
+          }}
+        >
+          Center image
+        </button>
+      )}
+      {markError && (
+        <p role="alert" className="text-sm text-rose-300">
+          {markError}
+        </p>
+      )}
+    </div>
+  );
+
+  return (
+    <section className="space-y-3" aria-label="Sky viewer and FITS samples">
+      {controlsInSidebar
+        ? controlsHost && createPortal(controlsPanel, controlsHost)
+        : controlsPanel}
       <section
         className="viewer mobile:min-h-105 relative min-h-112.5 overflow-hidden rounded-xl bg-[#08080a] [border:1px_solid_#37323f]"
         aria-label="Interactive sky atlas"
@@ -1048,6 +1059,7 @@ function SkyViewerInstance({
           </div>
         )}
       </section>
+      {!exposure && <SpherexArchive position={position} onAddExposure={onAddExposure} standalone />}
     </section>
   );
 }

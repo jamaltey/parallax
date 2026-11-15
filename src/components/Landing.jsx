@@ -99,7 +99,7 @@ export default function Landing({ onTour }) {
       >
         <div className="section-intro mobile:[&_>_p:last-child]:text-[0.85rem] max-w-185 [&_>_p:last-child]:mt-6.5 [&_>_p:last-child]:max-w-132.5 [&_>_p:last-child]:text-[0.95rem] [&_>_p:last-child]:leading-[1.9] [&_>_p:last-child]:text-[#9a9aa3]">
           <p className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-            01 / The method
+            The method
           </p>
           <h2
             id="method-title"
@@ -175,7 +175,7 @@ export default function Landing({ onTour }) {
       >
         <div>
           <p className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-            02 / A change in perspective
+            A change in perspective
           </p>
           <h2
             className="display-heading mobile:text-[2.65rem] mt-5.5 font-[Georgia,'Times_New_Roman',serif] text-[clamp(2.6rem,4.6vw,4.2rem)] leading-[1.1] font-normal tracking-[-0.035em] [&_em]:font-normal [&_em]:text-[#b5a0e5]"
@@ -249,7 +249,7 @@ export function Mission() {
       className="landing-section mission-section tablet:px-6 tablet:py-16.25 mobile:mb-15 mobile:px-4.5 mobile:py-13.75 mobile:[&_>_.display-heading]:text-[2.6rem] mx-0 mt-12.5 mb-22.5 scroll-mt-7.5 rounded-xl bg-[#141418d9] px-7.5 py-25 text-center [border:1px_solid_var(--line)] [&_>_.action-primary]:mt-2 [&_>_.display-heading]:text-[clamp(2.6rem,4.5vw,4rem)] [&_>_p.mission-disclosure.mission-disclosure]:mb-0 [&_>_p.mission-disclosure.mission-disclosure]:text-[0.65rem] [&_>_p.mission-disclosure.mission-disclosure]:text-[#807b88] [&_>_p:not(.eyebrow)]:mx-auto [&_>_p:not(.eyebrow)]:my-6.5 [&_>_p:not(.eyebrow)]:max-w-145 [&_>_p:not(.eyebrow)]:text-[0.85rem] [&_>_p:not(.eyebrow)]:leading-[1.9] [&_>_p:not(.eyebrow)]:text-[#9a9aa3]"
     >
       <p className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-        04 / The mission ahead
+        The mission ahead
       </p>
       <h2 className="display-heading mobile:text-[2.65rem] mt-5.5 font-[Georgia,'Times_New_Roman',serif] text-[clamp(2.6rem,4.6vw,4.2rem)] leading-[1.1] font-normal tracking-[-0.035em] [&_em]:font-normal [&_em]:text-[#b5a0e5]">
         A sky full of questions.

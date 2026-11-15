@@ -19,7 +19,7 @@ export default function Timeline({
       <div className="flex justify-between gap-3">
         <div>
           <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-            03 / Time machine
+            Time machine
           </div>
           <h2>Observation timeline</h2>
         </div>

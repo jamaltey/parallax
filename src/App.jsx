@@ -8,6 +8,8 @@ import Tutorial from './components/Tutorial';
 export default function App() {
   const [tourOpen, setTourOpen] = useState(false);
   const [position, setPosition] = useState({ ra: 83.633, dec: 22.0145, fov: 2 });
+  const [skyControlsHost, setSkyControlsHost] = useState(null);
+  const [comparisonHost, setComparisonHost] = useState(null);
   return (
     <>
       <Starfield />
@@ -65,7 +67,7 @@ export default function App() {
           <div className="explorer-heading mobile:flex-col mobile:[align-items:start] mobile:gap-5 mobile:[&_>_.action-outline]:min-h-10.5 mobile:[&_>_.action-outline]:px-4 mobile:[&_>_.action-outline]:py-2.75 flex [align-items:end] justify-between gap-6 [&_.display-heading]:mt-4.5 [&_.display-heading]:text-[clamp(2.5rem,4vw,3.7rem)]">
             <div>
               <p className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-                03 / Sky explorer
+                Sky explorer
               </p>
               <h2
                 id="explorer-title"
@@ -96,10 +98,18 @@ export default function App() {
               <div data-tour="coordinates">
                 <PositionForm onApply={setPosition} />
               </div>
+              <div ref={setSkyControlsHost} />
+              <div ref={setComparisonHost} />
             </aside>
             <div className="space-y-5">
               <div>
-                <ObservationWorkspace position={position} />
+                <ObservationWorkspace
+                  position={position}
+                  skyControlsHost={skyControlsHost}
+                  skyControlsInSidebar
+                  comparisonHost={comparisonHost}
+                  comparisonInSidebar
+                />
               </div>
             </div>
           </div>

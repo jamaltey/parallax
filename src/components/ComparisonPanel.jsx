@@ -35,7 +35,7 @@ function ObservationCard({ label, frame }) {
   );
 }
 
-export default function ComparisonPanel({ frames, value, onChange, status }) {
+export default function ComparisonPanel({ frames, value, onChange, status, compact = false }) {
   const a = frames.find(frame => frame.id === value.aId);
   const b = frames.find(frame => frame.id === value.bId);
   const selectable = frames.length >= 2 && a && b && a.id !== b.id;
@@ -48,7 +48,7 @@ export default function ComparisonPanel({ frames, value, onChange, status }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-            04 / Compare
+            Compare
           </div>
           <h2 className="mt-2 text-[1.1rem] font-semibold">Align two observations</h2>
         </div>
@@ -69,7 +69,7 @@ export default function ComparisonPanel({ frames, value, onChange, status }) {
         </p>
       ) : (
         <>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className={`grid gap-3 ${compact ? '' : 'md:grid-cols-2'}`}>
             <label className="text-xs">
               Reference A
               <select value={value.aId} onChange={event => set({ aId: event.target.value })}>
@@ -91,7 +91,7 @@ export default function ComparisonPanel({ frames, value, onChange, status }) {
               </select>
             </label>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className={`grid gap-3 ${compact ? '' : 'md:grid-cols-2'}`}>
             <ObservationCard label="A · reference" frame={a} />
             <ObservationCard label="B · comparison" frame={b} />
           </div>

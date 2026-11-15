@@ -26,7 +26,7 @@ export default function PositionForm({ onApply }) {
       className="panel mobile:p-4.5 space-y-4 rounded-xl bg-[#141418] p-5.5 [border:1px_solid_var(--line)] [&_h2]:mt-2 [&_h2]:font-[inherit] [&_h2]:text-[1.1rem] [&_h2]:font-semibold [&_h2]:tracking-[-0.02em]"
     >
       <div className="eyebrow text-[0.65rem] leading-[1.7] font-semibold tracking-[0.16em] text-(--accent) uppercase">
-        01 / Navigate
+        Navigate
       </div>
       <h2>Choose your patch of sky</h2>
       <div className="grid grid-cols-3 gap-3">
