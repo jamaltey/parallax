@@ -21,7 +21,7 @@ Every real candidate retains the original IRSA observation IDs, timestamps, dete
 | Area                  | Working functionality                                                                                                              |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Real SPHEREx data     | Live Caltech/IPAC IRSA all-sky mosaic plus DR1 and QR3 original-exposure searches; no synthetic fallback                           |
-| Infrared exploration  | 102-channel mosaic metadata, 100 selectable non-blank wavelength layers, RA/Dec navigation, and FOV control                        |
+| Infrared exploration  | 102-channel mosaic metadata, 100 selectable non-blank layers, RA/Dec navigation, FOV control, and data-driven sound                |
 | Original observations | Strictly validated Level 2 FITS retrieval, timeline playback, browser Web Worker display reprojection, and provenance checks       |
 | Image comparison      | WCS-aligned opacity overlay, A/B blink, raw B − A subtraction, normalized visual residuals, overlap masks, and diverging display   |
 | Catalog context       | Click-to-identify nearest SIMBAD object through official Harvard and IDIA mirrors, with explicit no-match and outage states        |
@@ -71,7 +71,7 @@ The repository includes [render.yaml](render.yaml). Use `npm ci && npm run build
 
 Mission data comes from **NASA/SPHEREx via Caltech/IPAC IRSA**: the [all-sky wavelength cube](https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/) and [original spectral images](https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/). Included DSS/2MASS tutorial images are clearly labeled and cannot be submitted as SPHEREx candidates.
 
-The mosaic combines observation times, colors represent infrared brightness rather than visible color, and individual exposures may differ in wavelength and display stretch. Overlay and difference views operate on WCS-aligned float32 science pixels, but they remain exploratory: there is no PSF matching, per-pixel wavelength matching, quality-mask processing, or validated photometric subtraction. Calibrated photometry, spectral extraction, automated classification, motion fitting, and Planet X discovery or verification are not implemented.
+The mosaic combines observation times, colors represent infrared brightness rather than visible color, and individual exposures may differ in wavelength and display stretch. Overlay and difference views operate on WCS-aligned float32 science pixels, but they remain exploratory: there is no PSF matching, per-pixel wavelength matching, quality-mask processing, or validated photometric subtraction. Calibrated photometry, spectral extraction, sonification, automated classification, motion fitting, and Planet X discovery or verification are not implemented.
 
 ## Documentation
 

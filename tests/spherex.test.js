@@ -5,6 +5,9 @@ import {
   parseCubeProperties,
   parseArchiveTable,
   archiveSearchUrl,
+  officialExplorerUrl,
+  archiveTapRequest,
+  archiveTapUrl,
   cubeFrameFrequency,
 } from '../src/api/spherex.js';
 const fixture = name => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -28,6 +31,29 @@ test('archive query validates coordinates and constrains the request', () => {
   assert.equal(url.searchParams.get('RESPONSEFORMAT'), 'TSV');
   assert.throws(() => archiveSearchUrl({ ra: NaN, dec: 0, fov: 1 }));
   assert.throws(() => archiveSearchUrl({ ra: 0, dec: 0, fov: 1 }, 'fake'));
+  const explorer = new URL(officialExplorerUrl({ ra: 12.3, dec: -4.5, fov: 1 }));
+  assert.equal(explorer.origin, 'https://irsa.ipac.caltech.edu');
+  assert.equal(explorer.searchParams.get('api'), 'spectral-images');
+  assert.equal(explorer.searchParams.get('ra'), '12.3');
+  assert.equal(explorer.searchParams.get('dec'), '-4.5');
+});
+
+test('TAP fallback is fixed to IRSA and preserves the point-coverage query', () => {
+  const request = archiveTapRequest(
+    { ra: 304.693508808, dec: 42.4436872991, fov: 2 },
+    'spherex_qr3'
+  );
+  const body = new URLSearchParams(request.body);
+  assert.equal(request.url, 'https://irsa.ipac.caltech.edu/TAP/sync');
+  assert.equal(body.get('MAXREC'), '50');
+  assert.match(body.get('QUERY'), /spherex\/qr3\/level2/);
+  assert.match(body.get('QUERY'), /304\.693508808, 42\.4436872991/);
+  const url = new URL(
+    archiveTapUrl({ ra: 304.693508808, dec: 42.4436872991, fov: 2 }, 'spherex_qr3')
+  );
+  assert.equal(url.origin, 'https://irsa.ipac.caltech.edu');
+  assert.equal(url.pathname, '/TAP/sync');
+  assert.equal(url.searchParams.get('QUERY'), body.get('QUERY'));
 });
 test('real IRSA table retains exposure identity, detector, date, and download URL', () => {
   const text = fixture('spherex-sia.tsv');

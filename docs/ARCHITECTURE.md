@@ -25,7 +25,7 @@ Opened original observations use a six-entry browser LRU cache. Each entry retai
 
 ### `GET /api/spherex-exposures`
 
-`server/spherex.js` accepts `ra`, `dec`, `fov`, and `collection`. Coordinates and collections are validated before contacting the fixed `https://irsa.ipac.caltech.edu/SIA` service. Scientific query semantics remain a one-arcsecond circle, `RESPONSEFORMAT=TSV`, and `MAXREC=50` for `spherex_dr1` or `spherex_qr3`. The upstream timeout is 25 seconds, redirects are rejected, and no mock response is substituted.
+`server/spherex.js` accepts `ra`, `dec`, `fov`, and `collection`. Coordinates and collections are validated before contacting the fixed `https://irsa.ipac.caltech.edu/SIA` service. Scientific query semantics remain a one-arcsecond circle, `RESPONSEFORMAT=TSV`, and `MAXREC=50` for `spherex_dr1` or `spherex_qr3`. After two bounded SIA attempts fail, the route makes two bounded attempts through the official IRSA TAP service and the documented `spherex.artifact`/`spherex.plane` point-coverage join, normalizing its metadata to the existing frontend contract. All attempts share a 29-second request budget; redirects are rejected. A bounded process cache can serve the same verified query for 15 minutes during a transient outage. No mock response is substituted.
 
 ### `GET /api/spherex-image`
 

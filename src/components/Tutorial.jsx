@@ -9,7 +9,7 @@ const STEPS = [
   {
     target: 'samples',
     title: 'Choose your image',
-    text: 'The real SPHEREx DR1 mosaic opens by default. Select a wavelength to change its image layer, or search IRSA for exposures at your applied coordinates. Change sky map also offers local Horsehead and 2MASS samples and the DSS2 reference sky.',
+    text: 'The real SPHEREx DR1 mosaic opens by default. Select a wavelength to change its image layer. Search IRSA for original exposures at your applied coordinates. Change sky map also offers local Horsehead and 2MASS samples and the DSS2 reference sky.',
   },
   {
     target: 'atlas',

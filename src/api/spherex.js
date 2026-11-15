@@ -4,6 +4,7 @@ export const SPHEREX_HIPS = 'https://irsa.ipac.caltech.edu/data/hips/SPHEREx/sph
 export const SPHEREX_TUTORIAL = 'https://caltech-ipac.github.io/irsa-tutorials/spherex-intro/';
 export const SPHEREX_CUBE_TUTORIAL =
   'https://caltech-ipac.github.io/irsa-tutorials/spherex-hipscube/';
+export const SPHEREX_DATA_EXPLORER = 'https://irsa.ipac.caltech.edu/applications/spherex/';
 export const SPHEREX_COLLECTIONS = ['spherex_dr1', 'spherex_qr3'];
 
 export function parseCubeProperties(text) {
@@ -58,6 +59,51 @@ export function archiveSearchUrl(position, collection = 'spherex_dr1') {
     POS: `CIRCLE ${position.ra} ${position.dec} ${1 / 3600}`,
     RESPONSEFORMAT: 'TSV',
     MAXREC: '50',
+  }).toString();
+  return url.href;
+}
+
+export function officialExplorerUrl(position) {
+  validatePosition(position);
+  const url = new URL(SPHEREX_DATA_EXPLORER);
+  url.search = new URLSearchParams({
+    api: 'spectral-images',
+    ra: String(position.ra),
+    dec: String(position.dec),
+    sr: '1s',
+  }).toString();
+  return url.href;
+}
+
+export function archiveTapRequest(position, collection = 'spherex_dr1') {
+  validatePosition(position);
+  if (!SPHEREX_COLLECTIONS.includes(collection)) throw new Error('Unsupported SPHEREx collection.');
+  const release = collection === 'spherex_dr1' ? 'dr1' : 'qr3';
+  const query = `SELECT TOP 50 'https://irsa.ipac.caltech.edu/' || a.uri AS access_url, p.time_bounds_lower, p.time_bounds_upper, p.energy_bandpassname, p.provenance_version FROM spherex.artifact AS a JOIN spherex.plane AS p ON a.planeid = p.planeid WHERE 1 = CONTAINS(POINT('ICRS', ${position.ra}, ${position.dec}), p.poly) AND a.uri LIKE 'ibe/data/spherex/${release}/level2/%' ORDER BY p.time_bounds_lower`;
+  return {
+    url: 'https://irsa.ipac.caltech.edu/TAP/sync',
+    body: new URLSearchParams({
+      REQUEST: 'doQuery',
+      LANG: 'ADQL',
+      FORMAT: 'tsv',
+      MAXREC: '50',
+      QUERY: query,
+    }).toString(),
+  };
+}
+
+// Kept as a diagnostic/export compatibility helper. The server uses a POST
+// request because that is the form used by IRSA's PyVO examples and avoids
+// oversized ADQL query URLs at proxies and CDNs.
+export function archiveTapUrl(position, collection = 'spherex_dr1') {
+  const request = archiveTapRequest(position, collection);
+  const url = new URL(request.url);
+  url.search = new URLSearchParams({
+    REQUEST: 'doQuery',
+    LANG: 'ADQL',
+    FORMAT: 'tsv',
+    MAXREC: '50',
+    QUERY: new URLSearchParams(request.body).get('QUERY'),
   }).toString();
   return url.href;
 }
@@ -118,10 +164,13 @@ export async function searchSpherex(position, collection, { signal } = {}) {
     collection,
   });
   const response = await fetch(`/api/spherex-exposures?${params}`, { signal });
-  if (!response.ok)
-    throw new Error(
-      `IRSA search failed (${response.status}). Retry; archive search requires the Parallax server.`
-    );
+  if (!response.ok) {
+    let message = `IRSA search failed (${response.status}). Please retry.`;
+    try {
+      message = (await response.json()).error || message;
+    } catch {}
+    throw new Error(message);
+  }
   return parseArchiveTable(await response.text());
 }
 

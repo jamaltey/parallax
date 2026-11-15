@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
+import { officialExplorerUrl, searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
 
 export default function SpherexArchive({
   position,
@@ -84,9 +84,21 @@ export default function SpherexArchive({
         </div>
       </details>
       {state.error && (
-        <p role="alert" className="text-xs text-rose-300">
-          {state.error}
-        </p>
+        <div role="alert" className="space-y-2 text-xs text-rose-300">
+          <p>{state.error}</p>
+          <p className="text-[#b9b9c2]">
+            This is an upstream IRSA service outage, not a missing observation. You can retry here
+            or open the same coordinates in IRSA's official SPHEREx Data Explorer.
+          </p>
+          <a
+            className="inline-block text-violet-300 underline"
+            href={officialExplorerUrl(position)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open official SPHEREx Data Explorer ↗
+          </a>
+        </div>
       )}
       {state.searched && (
         <div className="flex flex-wrap items-center justify-between gap-3">
