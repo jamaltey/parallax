@@ -72,3 +72,19 @@ The viewer can look up the nearest known SIMBAD object around a clicked ICRS pos
 The implemented workflow supports human candidate reporting, WCS-aligned exploratory comparison, mirrored SIMBAD lookup, and community assessment. Broad catalog cross-matching, source extraction, spectral extraction, calibrated photometry, validated scientific subtraction, automated motion fitting, and Planet X discovery/confirmation are not implemented. A catalog match, residual, moving point, or high agreement score does not establish a new planet.
 
 Official challenge: [Planet X and SPHEREx](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/). The URL was corroborated by a challenge index; the official page returned HTTP 502 during this documentation pass on 2026-11-14, so its full current text was not reverified. Mission data attribution remains NASA/SPHEREx · Caltech/IPAC IRSA. Parallax is an independent team project, with no implied NASA endorsement.
+
+## When IRSA search is down
+
+SPHEREx searches try IRSA SIA, then IRSA TAP. If both fail, the server falls back to, in order:
+
+1. IRSA's own answer for the same position saved within the last 24 hours (`data/spherex-cache/`, not committed);
+2. Parallax's offline footprint index (`data/spherex-index/`, committed), built from the real FITS headers on IRSA's public AWS mirror (`s3://nasa-irsa-spherex`);
+3. an IRSA answer saved within the last 30 days.
+
+After SIA and TAP both fail, the server skips them for 60 s so users get the fallback immediately. Exposure downloads fall back to the same file on the AWS mirror if IRSA's file server fails. The UI labels every fallback result. Nothing is ever invented: every row points at a real IRSA file.
+
+The index matches exact SIP footprints to within ~1 px. Only wide-survey (`all_sky`) frames are included. Exposures added after the index was built won't appear until it's refreshed, which resumes and only fetches new planning periods:
+
+```sh
+npm run index:spherex
+```

@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { officialExplorerUrl, searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
 
+const day = value =>
+  value ? new Date(value).toLocaleDateString(undefined, { dateStyle: 'medium' }) : null;
+
+/** Explains results that did not come from a live IRSA search. */
+function fallbackNote({ source, savedAt, indexBuiltAt }) {
+  if (source === 'cache')
+    return `IRSA search is down right now, so these are IRSA's own results for this position, saved${savedAt ? ` on ${day(savedAt)}` : ''}.`;
+  if (source === 'index')
+    return `IRSA search is down right now, so these results come from Parallax's index of IRSA's official AWS mirror${indexBuiltAt ? ` (built ${day(indexBuiltAt)})` : ''}. Every image is a real SPHEREx file; exposures newer than the index won't appear until IRSA is back.`;
+  return null;
+}
+
 export default function SpherexArchive({
   position,
   onAddExposure,
@@ -8,7 +20,13 @@ export default function SpherexArchive({
   standalone = false,
 }) {
   const [collection, setCollection] = useState('spherex_dr1');
-  const [state, setState] = useState({ rows: [], loading: false, error: '', searched: false });
+  const [state, setState] = useState({
+    rows: [],
+    loading: false,
+    error: '',
+    searched: false,
+    fallback: null,
+  });
   const request = useRef(null);
   useEffect(() => {
     request.current?.abort();
@@ -19,16 +37,24 @@ export default function SpherexArchive({
     request.current?.abort();
     const controller = new AbortController();
     request.current = controller;
-    setState({ rows: [], loading: true, error: '', searched: false });
+    setState({ rows: [], loading: true, error: '', searched: false, fallback: null });
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
     }, 30000);
     try {
-      const rows = await searchSpherex(position, collection, { signal: controller.signal });
+      const { rows, ...origin } = await searchSpherex(position, collection, {
+        signal: controller.signal,
+      });
       if (request.current === controller && !controller.signal.aborted)
-        setState({ rows, loading: false, error: '', searched: true });
+        setState({
+          rows,
+          loading: false,
+          error: '',
+          searched: true,
+          fallback: fallbackNote(origin),
+        });
     } catch (error) {
       if (request.current === controller && (timedOut || error.name !== 'AbortError'))
         setState({
@@ -38,6 +64,7 @@ export default function SpherexArchive({
             ? 'IRSA search timed out. Please retry.'
             : error.message || 'Could not reach IRSA. Please retry.',
           searched: false,
+          fallback: null,
         });
     } finally {
       clearTimeout(timer);
@@ -99,6 +126,11 @@ export default function SpherexArchive({
             Open official SPHEREx Data Explorer ↗
           </a>
         </div>
+      )}
+      {state.searched && state.fallback && (
+        <p role="note" className="rounded-md bg-amber-300/10 p-2.5 text-xs text-amber-200">
+          {state.fallback}
+        </p>
       )}
       {state.searched && (
         <div className="flex flex-wrap items-center justify-between gap-3">

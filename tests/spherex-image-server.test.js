@@ -140,3 +140,25 @@ test('image route rejects malformed or incomplete ranged responses', async t => 
   assert.equal(res.status, 502);
   assert.match(JSON.parse(res.body).error, /Content-Range/);
 });
+
+test('image route falls back to the same file on IRSA’s AWS mirror when IRSA fails', async t => {
+  const source = sourceFits();
+  const requested = [];
+  t.mock.method(globalThis, 'fetch', async url => {
+    requested.push(String(url));
+    if (String(url).startsWith('https://irsa.ipac.caltech.edu/'))
+      return new Response('Proxy Error', { status: 502 });
+    return new Response(source, { status: 200 });
+  });
+  const url = sourceUrl('level2_2025W18_1B_0074_2D1_spx_l2b-v27-2026-196');
+  const res = response();
+  await exposureRoute(
+    { method: 'GET', url: `/api/spherex-image?url=${encodeURIComponent(url)}` },
+    res
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(requested, [
+    url,
+    'https://nasa-irsa-spherex.s3.amazonaws.com/dr1/level2/2025W18_1B/l2b-v27-2026-196/1/level2_2025W18_1B_0074_2D1_spx_l2b-v27-2026-196.fits',
+  ]);
+});

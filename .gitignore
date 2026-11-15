@@ -3,3 +3,6 @@ dist/
 .env
 .env.local
 .DS_Store
+
+# Offline SPHEREx search data (see scripts/build-spherex-index.mjs)
+data/spherex-cache/

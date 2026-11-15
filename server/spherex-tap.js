@@ -1,4 +1,4 @@
-const BAND_LIMITS = {
+export const BAND_LIMITS = {
   'SPHEREx-D1': [0.744e-6, 1.116e-6],
   'SPHEREx-D2': [1.099e-6, 1.651e-6],
   'SPHEREx-D3': [1.636e-6, 2.421e-6],
@@ -54,21 +54,27 @@ export function normalizeTapArchiveTable(text, collection) {
       provenance_version: row.provenance_version,
     };
   });
-  const fields = [
-    'access_url',
-    'obs_id',
-    't_min',
-    't_max',
-    'energy_bandpassname',
-    'em_min',
-    'em_max',
-    'obs_collection',
-    'obs_publisher_did',
-    'access_format',
-    'provenance_version',
-  ];
+  return archiveTsv(rows);
+}
+
+// The SIA-shaped table the frontend parses, shared by the TAP and offline-index fallbacks.
+const ARCHIVE_FIELDS = [
+  'access_url',
+  'obs_id',
+  't_min',
+  't_max',
+  'energy_bandpassname',
+  'em_min',
+  'em_max',
+  'obs_collection',
+  'obs_publisher_did',
+  'access_format',
+  'provenance_version',
+];
+
+export function archiveTsv(rows) {
   return [
-    fields.join('\t'),
-    ...rows.map(row => fields.map(field => row[field] ?? '').join('\t')),
+    ARCHIVE_FIELDS.join('\t'),
+    ...rows.map(row => ARCHIVE_FIELDS.map(field => row[field] ?? '').join('\t')),
   ].join('\n');
 }
