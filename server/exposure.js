@@ -80,10 +80,12 @@ async function readPrefix(response) {
 export async function exposureRoute(req, res, next = () => {}) {
   const url = new URL(req.url, 'http://localhost');
   if (url.pathname !== '/api/spherex-image') return next();
-  res.setHeader('Cache-Control', 'no-store');
   const fail = (status, message) => {
     if (!res.destroyed) {
-      res.writeHead(status, { 'Content-Type': 'application/json' });
+      res.writeHead(status, {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      });
       res.end(JSON.stringify({ error: message }));
     }
   };
@@ -113,7 +115,10 @@ export async function exposureRoute(req, res, next = () => {}) {
       cache.set(source, image);
     }
     if (!res.destroyed) {
-      res.writeHead(200, { 'Content-Type': 'application/fits' });
+      res.writeHead(200, {
+        'Content-Type': 'application/fits',
+        'Cache-Control': 'private, max-age=86400, immutable',
+      });
       res.end(image);
     }
   } catch (error) {

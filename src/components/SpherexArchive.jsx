@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { searchSpherex, SPHEREX_TUTORIAL } from '../api/spherex';
 
-export default function SpherexArchive({ position, onAddExposure, standalone = false }) {
+export default function SpherexArchive({
+  position,
+  onAddExposure,
+  onLoadExposures,
+  standalone = false,
+}) {
   const [collection, setCollection] = useState('spherex_dr1');
   const [state, setState] = useState({ rows: [], loading: false, error: '', searched: false });
   const request = useRef(null);
@@ -15,20 +20,23 @@ export default function SpherexArchive({ position, onAddExposure, standalone = f
     const controller = new AbortController();
     request.current = controller;
     setState({ rows: [], loading: true, error: '', searched: false });
-    const timer = setTimeout(
-      () => controller.abort(new Error('IRSA search timed out. Please retry.')),
-      30000
-    );
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 30000);
     try {
       const rows = await searchSpherex(position, collection, { signal: controller.signal });
       if (request.current === controller && !controller.signal.aborted)
         setState({ rows, loading: false, error: '', searched: true });
     } catch (error) {
-      if (request.current === controller && error.name !== 'AbortError')
+      if (request.current === controller && (timedOut || error.name !== 'AbortError'))
         setState({
           rows: [],
           loading: false,
-          error: error.message || 'Could not reach IRSA. Please retry.',
+          error: timedOut
+            ? 'IRSA search timed out. Please retry.'
+            : error.message || 'Could not reach IRSA. Please retry.',
           searched: false,
         });
     } finally {
@@ -47,8 +55,7 @@ export default function SpherexArchive({ position, onAddExposure, standalone = f
         <div className="space-y-1">
           <h3 className="text-sm font-semibold">Ready to investigate?</h3>
           <p className="text-xs leading-relaxed text-[#9a9aa3]">
-            Find individual SPHEREx images at your selected sky position, then open one to mark an
-            object.
+            Find SPHEREx images at this position, then browse every result with the timeline slider.
           </p>
         </div>
         <button onClick={search} disabled={state.loading}>
@@ -68,8 +75,8 @@ export default function SpherexArchive({ position, onAddExposure, standalone = f
           <p className="leading-relaxed">
             Searching around RA {position.ra}°, Dec {position.dec}° with a 1 arcsecond radius.
             Changing the viewer zoom does not change this search area. Results come from the IRSA
-            archive. Opening an image adds it to your investigation; downloading its original FITS
-            file does not change the viewer.
+            archive. Timeline images load only when selected and are cached after viewing.
+            Downloading an original FITS file does not change the viewer.
           </p>
           <a className="underline" href={SPHEREX_TUTORIAL} target="_blank" rel="noreferrer">
             Official data tutorial ↗
@@ -82,11 +89,18 @@ export default function SpherexArchive({ position, onAddExposure, standalone = f
         </p>
       )}
       {state.searched && (
-        <p role="status" className="text-xs text-[#9a9aa3]">
-          {state.rows.length
-            ? `${state.rows.length} images found${state.rows.length >= 50 ? ' (request limit: 50; more may exist)' : ''}. Dates are UTC.`
-            : 'No images found for these coordinates and collection.'}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-xs text-[#9a9aa3]">
+            {state.rows.length
+              ? `${state.rows.length} images found${state.rows.length >= 50 ? ' (request limit: 50; more may exist)' : ''}. Dates are UTC.`
+              : 'No images found for these coordinates and collection.'}
+          </p>
+          {state.rows.length > 0 && onLoadExposures && (
+            <button onClick={() => onLoadExposures(state.rows)}>
+              Display all {state.rows.length} in timeline
+            </button>
+          )}
+        </div>
       )}
       {state.rows.length > 0 && (
         <ul
@@ -120,7 +134,7 @@ export default function SpherexArchive({ position, onAddExposure, standalone = f
               </details>
               {onAddExposure && (
                 <button className="mt-2" onClick={() => onAddExposure(row)}>
-                  Open image
+                  Open only this image
                 </button>
               )}
             </li>

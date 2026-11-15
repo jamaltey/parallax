@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import SkyViewer from '../components/SkyViewer';
 import Timeline from '../components/Timeline';
 import ComparisonPanel from '../components/ComparisonPanel';
 import CandidateForm from './CandidateForm';
 import { validateExposure } from './model';
+import { preloadExposureDisplays } from '../lib/prepareExposure';
 
 export default function ObservationWorkspace({
   position,
@@ -39,6 +40,14 @@ export default function ObservationWorkspace({
     contrast: 1,
   });
   const [comparisonStatus, setComparisonStatus] = useState({ message: '', error: '', stats: null });
+  const preloadController = useRef(null);
+  const [preload, setPreload] = useState({
+    running: false,
+    completed: 0,
+    total: 0,
+    failed: 0,
+    storageFailed: 0,
+  });
   const current = active ? frames[index] : null;
   const visibleMarkers = useMemo(
     () =>
@@ -50,6 +59,13 @@ export default function ObservationWorkspace({
       }),
     [frames, marks, current?.id]
   );
+  const nearbyFrames = useMemo(() => {
+    if (!active || frames.length < 2) return [];
+    const seen = new Set([current?.id]);
+    return [1, -1, 2]
+      .map(offset => frames[(index + offset + frames.length) % frames.length])
+      .filter(frame => frame && !seen.has(frame.id) && seen.add(frame.id));
+  }, [active, frames, index, current?.id]);
   const reporterMarkers = useMemo(
     () =>
       revealReporter
@@ -72,7 +88,7 @@ export default function ObservationWorkspace({
     comparisonView.b &&
     comparisonView.a.id !== comparisonView.b.id;
   const markingUnavailable = !current
-    ? 'Start with “Find images here” below, then choose “Open image”. You can mark an object once the image is ready.'
+    ? 'Find images below, then send all results to the timeline or open one image. You can mark an object once its image is ready.'
     : !ready
       ? 'Marking will be available once this exposure loads successfully. If loading fails, use Retry in the viewer.'
       : comparisonActive
@@ -130,11 +146,32 @@ export default function ObservationWorkspace({
     )
       setComparison(previous => ({ ...previous, method: 'normalized' }));
   }, [comparisonStatus.stats, comparison.method]);
+  useEffect(() => () => preloadController.current?.abort(), []);
+
+  function preloadSequence(rows) {
+    preloadController.current?.abort();
+    const controller = new AbortController();
+    preloadController.current = controller;
+    setPreload({ running: true, completed: 0, total: rows.length, failed: 0, storageFailed: 0 });
+    preloadExposureDisplays(rows, {
+      signal: controller.signal,
+      concurrency: 2,
+      onProgress: progress => {
+        if (preloadController.current === controller && !controller.signal.aborted)
+          setPreload({ running: progress.completed < progress.total, ...progress });
+      },
+    }).then(result => {
+      if (preloadController.current === controller && !controller.signal.aborted)
+        setPreload({ running: false, ...result });
+    });
+  }
+  function cancelPreload() {
+    preloadController.current?.abort();
+    setPreload(previous => ({ ...previous, running: false }));
+  }
   function add(frame) {
     try {
       validateExposure(frame);
-      if (frames.length >= 12 && !frames.some(f => f.id === frame.id))
-        throw new Error('A sequence can contain up to 12 exposures.');
     } catch (e) {
       setError(e.message);
       return;
@@ -149,6 +186,36 @@ export default function ObservationWorkspace({
       setIndex(frames.length);
     } else setIndex(found);
     setActive(true);
+  }
+  function loadSequence(rows) {
+    try {
+      if (!Array.isArray(rows) || !rows.length) throw new Error('No observations to load.');
+      if (rows.length > 50) throw new Error('A browsing timeline can contain up to 50 exposures.');
+      const unique = [];
+      const ids = new Set();
+      for (const row of rows) {
+        validateExposure(row);
+        if (!ids.has(row.id)) {
+          ids.add(row.id);
+          unique.push(row);
+        }
+      }
+      if (!unique.length) throw new Error('No valid observations to load.');
+      setFrames(unique);
+      setMarks(previous =>
+        Object.fromEntries(Object.entries(previous).filter(([id]) => ids.has(id)))
+      );
+      setIndex(0);
+      setActive(true);
+      setReady(false);
+      setPlaying(false);
+      setMarkMode(false);
+      setReport(false);
+      setError('');
+      preloadSequence(unique);
+    } catch (e) {
+      setError(e.message);
+    }
   }
   function select(i) {
     if (active && i === index) return;
@@ -210,7 +277,7 @@ export default function ObservationWorkspace({
           </p>
         )}
         {frames.length > 0 && (
-          <div className="space-y-2">
+          <div className="max-h-52 space-y-2 overflow-auto pr-1">
             {frames.map((frame, i) => (
               <div key={frame.id} className="flex items-center gap-2 text-xs">
                 <button
@@ -258,6 +325,7 @@ export default function ObservationWorkspace({
           {active && !investigation && (
             <button
               onClick={() => {
+                cancelPreload();
                 setActive(false);
                 setReady(false);
                 setMarkMode(false);
@@ -306,6 +374,7 @@ export default function ObservationWorkspace({
       <SkyViewer
         position={investigation && current?.view ? current.view : position}
         exposure={current}
+        prefetchExposures={nearbyFrames}
         markers={visibleMarkers}
         reporterMarkers={reporterMarkers}
         markMode={markMode}
@@ -316,6 +385,7 @@ export default function ObservationWorkspace({
           setMarkMode(false);
         }}
         onAddExposure={investigation ? undefined : add}
+        onLoadExposures={investigation ? undefined : loadSequence}
         onExposureReady={loaded}
         controlsHost={skyControlsHost}
         controlsInSidebar={skyControlsInSidebar}
@@ -332,11 +402,13 @@ export default function ObservationWorkspace({
             setSpeed={setSpeed}
             imageMode
             busy={!ready}
+            preload={preload}
+            onCancelPreload={cancelPreload}
           />
         ) : (
           <p className="rounded-xl border border-white/10 p-5 text-sm text-[#9a9aa3]">
-            Your observation timeline starts when you open an image. Open more images to compare
-            their observation dates.
+            Find SPHEREx images below, then add all results to the timeline to browse them with the
+            slider.
           </p>
         )}
       </div>

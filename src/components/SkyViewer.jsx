@@ -9,21 +9,20 @@ import {
   SPHEREX_CUBE_TUTORIAL,
 } from '../api/spherex';
 import SpherexArchive from './SpherexArchive';
-import {
-  cacheExposureDisplay,
-  getCachedExposureDisplay,
-  loadSpherexExposure,
-} from '../lib/loadExposure';
+import { loadSpherexExposure } from '../lib/loadExposure';
+import { prepareExposureDisplay } from '../lib/prepareExposure';
 import { isCurrentComparisonJob, overlayOpacities } from '../lib/comparison';
 import { exposureCacheKey, MAX_CACHED_EXPOSURES } from '../lib/exposureCache';
 import { identifyObject } from '../api/objects';
 export default function SkyViewer({
   position,
   exposure = null,
+  prefetchExposures = [],
   markers = [],
   reporterMarkers = [],
   onMark,
   onAddExposure,
+  onLoadExposures,
   onExposureReady,
   markMode = false,
   comparison,
@@ -38,10 +37,12 @@ export default function SkyViewer({
     <SkyViewerInstance
       key={attempt}
       exposure={exposure}
+      prefetchExposures={prefetchExposures}
       markers={markers}
       reporterMarkers={reporterMarkers}
       onMark={onMark}
       onAddExposure={onAddExposure}
+      onLoadExposures={onLoadExposures}
       onExposureReady={onExposureReady}
       markMode={markMode}
       comparison={comparison}
@@ -62,10 +63,12 @@ function SkyViewerInstance({
   setSampleId,
   retry,
   exposure,
+  prefetchExposures,
   markers,
   reporterMarkers,
   onMark,
   onAddExposure,
+  onLoadExposures,
   onExposureReady,
   markMode,
   comparison,
@@ -297,8 +300,12 @@ function SkyViewerInstance({
     const atlas = viewer.current;
     let cancelled = false;
     atlas.removeImageLayer('sample-fits');
-    for (const entry of exposureLayers.current.values()) entry.layer.setOpacity(0);
+    const hideExposureLayers = exceptKey => {
+      for (const [key, entry] of exposureLayers.current)
+        if (key !== exceptKey) entry.layer.setOpacity(0);
+    };
     if (comparisonActive) {
+      hideExposureLayers();
       setSampleState({ loading: false, error: '', loaded: false });
       return;
     }
@@ -311,6 +318,7 @@ function SkyViewerInstance({
       ) {
         exposureLayers.current.delete(cacheKey);
         exposureLayers.current.set(cacheKey, cachedLayer);
+        hideExposureLayers(cacheKey);
         cachedLayer.layer.setOpacity(1);
         const metadata = {
           ...cachedLayer.metadata,
@@ -326,14 +334,12 @@ function SkyViewerInstance({
       }
       const controller = new AbortController();
       let blobUrl;
-      let renderWorker;
       let layerCommitted = false;
       science.current = null;
       callbacks.current.onExposureReady?.(false);
       setSampleState({ loading: true, error: '', loaded: false });
       const timer = setTimeout(() => {
         controller.abort();
-        renderWorker?.terminate();
         if (!cancelled) {
           setSampleState({
             loading: false,
@@ -344,29 +350,13 @@ function SkyViewerInstance({
         }
       }, 65000);
       (async () => {
-        const { buffer, image, metadata } = await loadSpherexExposure(exposure, {
+        const { image, metadata, displayBuffer } = await prepareExposureDisplay(exposure, {
           signal: controller.signal,
         });
         const display = metadata.display;
         if (cancelled || controller.signal.aborted) return;
         // Retain the original buffer for provenance and marking. Aladin 3.8.2
         // renders these TAN-SIP images blank, so resample only the display copy.
-        let displayBuffer = getCachedExposureDisplay(exposure);
-        if (!displayBuffer) {
-          displayBuffer = await new Promise((resolve, reject) => {
-            renderWorker = new Worker(new URL('../lib/renderFits.worker.js', import.meta.url), {
-              type: 'module',
-            });
-            renderWorker.onmessage = ({ data }) =>
-              data.error ? reject(new Error(data.error)) : resolve(data.buffer);
-            renderWorker.onerror = () =>
-              reject(new Error('Could not prepare the observation image.'));
-            renderWorker.postMessage(buffer);
-          });
-          renderWorker.terminate();
-          cacheExposureDisplay(exposure, displayBuffer);
-        }
-        if (cancelled || controller.signal.aborted) return;
         blobUrl = URL.createObjectURL(new Blob([displayBuffer], { type: 'application/fits' }));
         const layerName = `exposure-${++exposureLayerSequence.current}`;
         let layer;
@@ -412,6 +402,8 @@ function SkyViewerInstance({
           metadata,
         };
         exposureLayers.current.set(cacheKey, layerEntry);
+        hideExposureLayers(cacheKey);
+        layer.setOpacity(1);
         layerCommitted = true;
         renderCompletion
           .then(rendered => {
@@ -461,11 +453,11 @@ function SkyViewerInstance({
         cancelled = true;
         controller.abort();
         clearTimeout(timer);
-        renderWorker?.terminate();
         science.current = null;
         if (blobUrl && !layerCommitted) URL.revokeObjectURL(blobUrl);
       };
     }
+    hideExposureLayers();
     if (isSpherex) {
       const controller = new AbortController();
       setSampleState({ loading: true, error: '', loaded: false });
@@ -784,6 +776,21 @@ function SkyViewerInstance({
     };
   }, [ready, markers, reporterMarkers, lookupState.result]);
 
+  const prefetchKey = prefetchExposures.map(frame => frame.id).join('|');
+  useEffect(() => {
+    if (!exposure || comparisonActive || !sampleState.loaded || !prefetchExposures.length) return;
+    const controller = new AbortController();
+    (async () => {
+      for (const frame of prefetchExposures) {
+        if (controller.signal.aborted) return;
+        await prepareExposureDisplay(frame, { signal: controller.signal });
+      }
+    })().catch(error => {
+      if (error.name !== 'AbortError') console.warn('Could not preload a nearby exposure.', error);
+    });
+    return () => controller.abort();
+  }, [exposure?.id, comparisonActive, sampleState.loaded, prefetchKey]);
+
   const visibleState = comparisonActive ? comparisonDisplay : sampleState;
 
   const controlsPanel = (
@@ -1046,7 +1053,10 @@ function SkyViewerInstance({
         data-tour="atlas"
       >
         <div id={id} className="sky mobile:h-105 h-130 w-full" />
-        {(status || (exposure && (visibleState.loading || visibleState.error))) && (
+        {(status ||
+          (exposure &&
+            (visibleState.error ||
+              (visibleState.loading && exposureLayers.current.size === 0)))) && (
           <div
             className="viewer-status pointer-events-none absolute top-[40%] right-[10%] left-[10%] text-center"
             role="status"
@@ -1059,7 +1069,14 @@ function SkyViewerInstance({
           </div>
         )}
       </section>
-      {!exposure && <SpherexArchive position={position} onAddExposure={onAddExposure} standalone />}
+      {!exposure && (
+        <SpherexArchive
+          position={position}
+          onAddExposure={onAddExposure}
+          onLoadExposures={onLoadExposures}
+          standalone
+        />
+      )}
     </section>
   );
 }

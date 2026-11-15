@@ -129,7 +129,7 @@ export default function App() {
           <p>A new perspective on the night sky.</p>
         </div>
         <p>
-          Independent NASA Space Apps concept.
+          Independent NASA Space Apps concept. Created by team Delta Cephei
           <br />
           Imagery: NASA/SPHEREx · Caltech/IPAC · Astropy / DSS / 2MASS · Viewer: CDS Aladin Lite.
         </p>
