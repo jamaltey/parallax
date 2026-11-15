@@ -23,8 +23,8 @@ const STEPS = [
   },
   {
     target: 'compare',
-    title: 'Know what comes next',
-    text: 'Overlay and Difference are interface placeholders. Scientific comparison needs aligned images of the same field and band. Your current sample image and settings stay unchanged during this tour.',
+    title: 'Compare two observations',
+    text: 'Open two real images, choose reference A and comparison B, then use aligned overlay, blink, or B − A residuals. Return to Original view before placing or confirming a marker.',
   },
 ];
 

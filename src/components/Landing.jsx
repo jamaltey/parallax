@@ -163,7 +163,7 @@ export default function Landing({ onTour }) {
             <ul>
               <li>Compare the same region and band</li>
               <li>Align images before subtraction</li>
-              <li>Overlay and difference tools are planned</li>
+              <li>Inspect WCS-aligned overlay and difference views</li>
             </ul>
           </article>
         </div>
